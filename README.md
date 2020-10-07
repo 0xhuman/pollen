@@ -1,25 +1,26 @@
-# Pollen: USSD Savings Circles 🦄 🌍 🚀 
+![](ignore/pollenlogoL.png)
+# USSD Savings Circles 🦄 🌍 🚀 
 
 ## *(TL;DR) 🔑*
 *[Pollen](https://www.fourthlinelimited.com/finance) is a platform for African farmers to access finanical 💸, crop 🌱, and weather services 🌦. Specifically, Pollen allows users to participate in digital savings circles (aka village banking), check the weekly forecast, and find local buyers for their crops. Pollen uses Unstructured Supplementary Service Data [(USSD)](https://en.wikipedia.org/wiki/Unstructured_Supplementary_Service_Data) to reach users without a smartphone or internet access and maximize prosperity. This is done with a PHP server and MySQL database. To manage user funds in a secure, transparent, and trustless manor, we use the [Celo Blockchain](https://www.celo.org). Mobile-money (i.e. [M-Pesa](https://en.wikipedia.org/wiki/M-Pesa)) serves as the on- and off-ramps to cUSD, a stablecoin on Celo that is pegged to the US Dollar. This architecture can be expanded beyond savings circles to include interest-barring savings, lotteries, round-up savings, crypto investing, and much more 🚀* 
 
-## Overview
-#### Architecture
-* Flow Diagram
-* Using Levels
-* Tech Stack Diagram
-#### USSD
-* Connectivity, mobile money, etc
+## Overview 📚
+#### USSD Flow Process Diagram
+![](ignore/ussdflowdiagram.PNG)
+
+#### Tech Stack Diagram
+![](ignore/techstackdiagram.jpg)
+
 #### Celo
 * High level overview and capability, value adds, competitive advantage
 
-## APIs
+## APIs 🌐
 #### Africa's Talking
 #### OpenWeather
 #### KotaniPay
 #### Crop Prices
 
-## Database Design
+## Database Design 🛠
 #### Users
 * Username, Phone Number, Location, Secret Pin
 #### Session Levels
@@ -43,9 +44,9 @@
 #### City Coordinates
 * City Name, Lat, Lon
 
-## Code Walk Through
+## Code Walk Through 🚶🏽‍♀️
 #### User Registration
-#### Tracking User Session Level
+#### Tracking User Session with Levels
 #### OpenWeather API
 
 #### Requerying data
@@ -58,7 +59,7 @@
 * strtolower
 * strtoupper
 
-## Resources
+## Resources 😅
 #### Africa's Talking Examples
 #### PHP Help
 #### MySQL Help
