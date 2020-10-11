@@ -1,10 +1,10 @@
 <?php
 
-//Connection Credentials (000webhost.com)
+//Connection Credentials (000webhost.com) INSERT YOUR OWN STUFF
 $servername = 'localhost';
-$username = 'id14808068_eric';
-$password = "izJ1zYP]Zeturo[p";    //new db izJ1zYP]Zeturo[p
-$database = "id14808068_ussd";
+$username = '';
+$password = "";   
+$database = "";
 //$dbport = 3306;
 
 // Create connection
