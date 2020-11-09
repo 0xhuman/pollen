@@ -257,9 +257,9 @@ if (!empty($_POST))
                 }
 
                 // POLLEN PAY ACTIONS
-                elseif ($reverse[1] == 0) 
+                elseif ($reverse[1] == 0)
                 {
-                  
+
                   // SEND
                   if ($userResponse == 1)
                   {
@@ -277,7 +277,7 @@ if (!empty($_POST))
                   {
                     $response = "CON Please enter the amount (ZWA) you would like to withdraw to your mobile money account: ";
                   }
-                  
+
                   // HISTORY
                   elseif ($userResponse == 4)
                   {
@@ -285,7 +285,7 @@ if (!empty($_POST))
                     // Loop through txn history
                   }
 
-                  
+
 
                     // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
@@ -340,7 +340,7 @@ if (!empty($_POST))
                           // Decode the response
                           $responseData = json_decode($APIresponse, TRUE);
 
-                          
+
                             // SUCCESS
                             if ($responseData['status'] == 'success')
                             {
@@ -356,7 +356,7 @@ if (!empty($_POST))
                             {
                               $response = "END Oops, looks like we're having some issues. Please try again later or contact support if the issue continues. ";
                             }
-                          
+
 
                           // Print the date from the response
                           //echo $responseData['published'];
@@ -366,8 +366,8 @@ if (!empty($_POST))
                         }  // end of KYC test
 
                     // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-                  
-                  
+
+
                 }
 
                 // CIRCLE ACTIONS (2a)
@@ -732,7 +732,7 @@ if (!empty($_POST))
 
 
                 // SAVINGS CIRCLES
-                if ($textArray[0] == 1 || $reverse[2] == 1) 
+                if ($textArray[0] == 1 || $reverse[2] == 1)
                 {
                   // VIEW BALANCES
                   if ($userResponse == 1)
@@ -881,7 +881,7 @@ if (!empty($_POST))
                   //header('Content-type: text/plain');
                   //echo $response;
                 } //end of SAVINGS CIRCLES
-                  
+
                 // Update PHP level variable
                 $sql = "select level from session_levels where session_id ='" . $sessionId . " '";
                 $levelQuery = $db->query($sql);
@@ -967,7 +967,7 @@ if (!empty($_POST))
                   //$db->query($sqlLevel3);
                 //}
 
-                // POLLEN PAY 
+                // POLLEN PAY
                 if ($textArray[0] == 0 || $reverse[3] == 0)
                 {
                   // SEND (pin)
@@ -1347,6 +1347,35 @@ if (!empty($_POST))
                 echo $response;
 
             break;
+
+
+
+            case "5":
+
+            // POLLEN PAY SEND (API call and receipt)
+            if ($textArray[0] == 0 || $reverse[4] == 0)
+            {
+              // PIN CORRECT
+              if ($userResponse == $userPin)
+              {
+                // Execute KOTANIPAY request
+
+                // SUCCESSFUL
+                $response = "END You have successfully sent " . $reverse[1] . " ZWA to " . $reverse[2] . ". ";
+                // ERROR
+
+              }
+              else
+              {
+                $response = "END The pin you entered is not correct. Please dial back and try again. ";
+              }
+            }
+            header('Content-type: text/plain');
+            echo $response;
+
+            break;
+
+
         } // End of Switch (LEVEL)
 
     } //end of if ($userAvailable && $userAvailable['city'])
