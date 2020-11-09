@@ -384,6 +384,12 @@ if (!empty($_POST))
                     $sqlcircleSelect = "UPDATE session_levels SET circleSelect ='" . $circleSelect . "' where `session_id`='" . $sessionId . "'";
                     $db->query($sqlcircleSelect);
 
+                    // GET CIRCLE BALANCE
+                    $sqlCircleBalance = "SELECT balance FROM circles WHERE circleID LIKE '%" . $circleSelect . "%'";
+                    $resultCircleBalance = mysqli_query($db, $sqlCircleBalance);
+                    $circleBalanceAvailable = mysqli_fetch_assoc($resultCircleBalance);
+                    $circleBalance = $circleBalanceAvailable['balance'];
+
                     // CHECK IF PROPOSAL AVAILABLE
                     $sqlProposal = "SELECT * FROM circleProposals WHERE circleID LIKE '%" . $circleSelect . "%' && result is NULL";
                     $proposalQuery = $db->query($sqlProposal);
@@ -399,20 +405,13 @@ if (!empty($_POST))
                         $value = $proposalAvailable['value'];
 
                         // CHECK IF USER HAS ALREADY VOTED
-                        //$sqlVoteCheck = "SELECT * FROM votes WHERE circleID LIKE '%" . $circleSelect . "%' && phonenumber LIKE '%" . $phoneNumber . "%' && txnhash LIKE '%" . $txnhash . "%'";
-                        //$voteCheckQuery  = $db->query($sqlVoteCheck);
-                        //$voteCheckAvailable = $voteCheckQuery->fetch_assoc();
+                        $sqlVoteCheck = "SELECT * FROM votes WHERE phonenumber LIKE '%" . $phoneNumber . "%' && txnhash LIKE '%" . $txnhash . "%'";
+                        $voteCheckQuery  = $db->query($sqlVoteCheck);
+                        $voteCheckAvailable = $voteCheckQuery->fetch_assoc();
 
                         // If response is 1/5 and user has not voted
-                        if ($userResponse >= 1 && $userResponse <= 5 ) //&& $voteCheckAvailable != NULL
+                        if ($userResponse >= 1 && $userResponse <= 5 && $voteCheckAvailable == NULL)
                         {
-
-                            // GET CIRCLE BALANCE
-                            $sqlCircleBalance = "SELECT balance FROM circles WHERE circleID LIKE '%" . $circleSelect . "%'";
-                            $resultCircleBalance = mysqli_query($db, $sqlCircleBalance);
-                            $circleBalanceAvailable = mysqli_fetch_assoc($resultCircleBalance);
-                            $circleBalance = $circleBalanceAvailable['balance'];
-
                             //$response = "CON Welome to " . $circle1 . ". Please choose an action. \n"
                             $response = "CON Welcome to " . ucfirst($circleSelect) . ". \n Circle Balance: " . $circleBalance . " ZMW \n Please choose an action:
                            0. Vote
@@ -423,6 +422,15 @@ if (!empty($_POST))
                             //$response .= "5. Go back \n";
 
                         }
+
+                        else
+                        {
+                          $response = "CON Welcome to " . ucfirst($circleSelect) . ". \n Circle Balance: " . $circleBalance . " ZMW \n Please choose an action:
+                       1. View Balances
+                       2. Pay-in Funds
+                       3. Request Funds
+                       4. Leave Circle ";
+                        }
                         // end of votecheck
 
                     } //end of proposal available
@@ -430,12 +438,6 @@ if (!empty($_POST))
                     { //if ($proposalAvailable = NULL)
                         if ($userResponse >= 1 && $userResponse <= 5)
                         {
-
-                            // GET CIRCLE BALANCE
-                            $sqlCircleBalance = "SELECT balance FROM circles WHERE circleID LIKE '%" . $circleSelect . "%'";
-                            $resultCircleBalance = mysqli_query($db, $sqlCircleBalance);
-                            $circleBalanceAvailable = mysqli_fetch_assoc($resultCircleBalance);
-                            $circleBalance = $circleBalanceAvailable['balance'];
 
                             //$response = "CON Welome to " . $circle1 . ". Please choose an action. \n"
                             $response = "CON Welcome to " . ucfirst($circleSelect) . ". \n Circle Balance: " . $circleBalance . " ZMW \n Please choose an action:
@@ -445,8 +447,6 @@ if (!empty($_POST))
                          4. Leave Circle ";
                         }
                     }
-                    //echo ${"c" . $userResponse};
-                    //echo $c1;
 
                 } //end of if ($lv0v == 1){
 
