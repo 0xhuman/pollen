@@ -295,7 +295,7 @@ if (!empty($_POST))
                         {
 
                           // Define Auth Token
-                          $authToken = '';
+                          $authToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjp7ImlkIjoxLCJ1c2VybmFtZSI6ImVyaWNwaG90b25zIiwiZW1haWwiOiJlcmljcGhvdG9uc0BnbWFpbC5jb20ifSwiaWF0IjoxNjA0OTQyMTEzLCJleHAiOjE2MDQ5NDIxNDN9.evTmEVLVfeDuWAXlABfqtPCFW-CJIZ7fyz5BvF_yZbg';
 
                           // Define KYC Variables  (REPLACE WITH INFO FROM DATABASE)
                           $dateofbirth = '1999-08-18';
@@ -318,7 +318,7 @@ if (!empty($_POST))
                           );
 
                           // Setup cURL
-                          $ch = curl_init('https://api.kotanipay.com/restapi/kyc/:'.$phoneNumber.'');
+                          $ch = curl_init('https://europe-west3-kotanimac.cloudfunctions.net/savingsacco/api/kyc');
                           curl_setopt_array($ch, array(
                               CURLOPT_POST => TRUE,
                               CURLOPT_RETURNTRANSFER => TRUE,
@@ -340,6 +340,8 @@ if (!empty($_POST))
                           // Decode the response
                           $responseData = json_decode($APIresponse, TRUE);
 
+                          $response = "CON A ".$responseData['status']."\n";
+                          //print_r($responseData, TRUE);
 
                             // SUCCESS
                             if ($responseData['status'] == 'success')
@@ -352,16 +354,16 @@ if (!empty($_POST))
                               $response = "END Oops, looks like you've already signed up! Dial back to use our services.";
                             }
                             // ERROR: ELSE
-                            else
-                            {
-                              $response = "END Oops, looks like we're having some issues. Please try again later or contact support if the issue continues. ";
-                            }
+                            //else
+                            //{
+                              //$response = "END Oops, looks like we're having some issues. Please try again later or contact support if the issue continues. ";
+                            //}
 
 
                           // Print the date from the response
                           //echo $responseData['published'];
 
-
+                      
 
                         }  // end of KYC test
 
