@@ -1,5 +1,5 @@
 ![](ignore/pollenlogoL.png)
-# USSD Savings Circles (WIP Project 🧩)
+# USSD Savings Circles (WIP Project)
 # *(TL;DR) 🔑*
 *[Pollen](https://www.fourthlinelimited.com/finance) is a platform for African farmers to access finanical 💸, crop 🌱, and weather services 🌦. Specifically, Pollen allows users to participate in digital savings circles (aka village banking), check the weekly forecast, and find local buyers for their crops. Pollen uses Unstructured Supplementary Service Data [(USSD)](https://en.wikipedia.org/wiki/Unstructured_Supplementary_Service_Data) to reach users without a smartphone or internet access and maximize prosperity. This is done with a PHP server and MySQL database. To manage user funds in a secure, transparent, and trustless manor, we use the [Celo Blockchain](https://www.celo.org). Mobile-money (i.e. [M-Pesa](https://en.wikipedia.org/wiki/M-Pesa)) serves as the on- and off-ramps to cUSD, a stablecoin on Celo that is pegged to the US Dollar. This architecture can be expanded beyond savings circles to include interest-barring savings, lotteries, round-up savings, crypto investing, and much more 🚀* 
 
@@ -21,10 +21,10 @@ USSD is powerful and prevalent, especially in Africa. By using the [Africa's Tal
 In order to query the weekly forecast for any city in Zambia (or the world) we use the [OpenWeather](https://www.openweathermap.org) API. Their freshly updated [one-call API](https://openweathermap.org/api/one-call-api) allows us to query a weekly forecast with a single URL 
 
 #### KotaniPay (WIP)
-For communicating with the Celo Blockchain, we use the KotaniPay USSD to Celo gateway API from [KotaniLabs](https://www.linkedin.com/company/kotanilabs/?originalSubdomain=ke). This is in closed beta and not included in the code.
+For communicating with the Celo Blockchain, we use the KotaniPay USSD to Celo gateway API from [KotaniLabs](https://www.linkedin.com/company/kotanilabs/?originalSubdomain=ke). The KotaniPay uses a POST API.
 
 #### Crop Prices (WIP)
-For this step you can pull data from many different sources. We partnered with a local government agency in Zambia and use their API.
+For this step you can pull data from many different sources. We partnered with a local government agency in Zambia and use their data.
 
 ## Server and Database
 #### 000Webhost
