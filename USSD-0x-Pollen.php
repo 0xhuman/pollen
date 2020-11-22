@@ -205,7 +205,49 @@ if (!empty($_POST))
                   $userBalanceAvailable = $userBalanceQuery->fetch_assoc();
                   $userBalance = $userBalanceAvailable['balance'];
 
+                  // KOTANIPAY API
+                  // get auth token
+                  $chauth = curl_init('https://europe-west3-kotanimac.cloudfunctions.net/savingsacco/api/login');
+                  curl_setopt_array($chauth, array(
+                    CURLOPT_POST => TRUE,
+                    CURLOPT_RETURNTRANSFER => TRUE,
+                     ));
+                    $authResponse = curl_exec($chauth);
+                    $authData = json_decode($authResponse, TRUE);
+                    $authToken = $authData['token'];
+                  //define vars
+                  $phoneNumber2 = '+254701234567';
+                  $postData = array(
+                      'phoneNumber' => $phoneNumber2 ,
+                  );
+
+                  $ch = curl_init('https://europe-west3-kotanimac.cloudfunctions.net/savingsacco/api/getbalance');
+                  curl_setopt_array($ch, array(
+                      CURLOPT_POST => TRUE,
+                      CURLOPT_RETURNTRANSFER => TRUE,
+                      CURLOPT_HTTPHEADER => array(
+                          'Authorization: bearer '.$authToken,
+                          'Content-Type: application/json'
+                      ),
+                      CURLOPT_POSTFIELDS => json_encode($postData)
+                  ));
+
+                  // Send the request
+                  $APIresponse = curl_exec($ch);
+
+                  // Check for errors
+                  if($APIresponse === FALSE){
+                      die(curl_error($ch));
+                  }
+
+                  // Decode the response
+                  $responseData = json_decode($APIresponse, TRUE);
+
+                  // Balance print
+                  //$response .= "" . $responseData1['address'] . "\n" . $responseData1['balance']['cusd'] . "\n" . $responseData1['balance']['celo'] ."" ;
+
                   $response = "CON Your Balance: " . $userBalance . " ZWA
+                   cUSD: " . $responseData['balance']['cusd'] . ", CELO: " . $responseData['balance']['celo'] . "
                    1. Send Funds
                    2. Deposit Mobile Money
                    3. Withdraw to Mobile Money
@@ -256,6 +298,61 @@ if (!empty($_POST))
                   $db->query($sqlLevel1);
                 }
 
+                // WEATHER STATION LEVEL 2
+                elseif ( $textArray[0] == 3)  // || $reverse[1] == 3 || $reverse[2] == 3                 //$invalidCity == 1  || $reverse[2] == 3
+                {
+
+                    if ($userResponse == 1)
+                    {
+                      // Check if valid City
+                      $sqlmapcheck = "SELECT * FROM coordinates WHERE LOWER(city) LIKE '%" . $userCityL . "%' LIMIT 1";
+                      $mapcheckQuery = $db->query($sqlmapcheck);
+                      $mapcheckAvailable = $mapcheckQuery->fetch_assoc();
+
+                      // Valid city
+                      if ($mapcheckAvailable && $mapcheckAvailable['lon']!= NULL && $mapcheckAvailable['lat']!= NULL) {
+                        $response = "END The 8 day forecast for " . ucfirst($userCity) . " is: \n";
+                        require_once('pollen-weather-station.php');
+                      }
+
+                      // Invalid City
+                      else {
+                        $response = "CON We're sorry, but either " . ucfirst($userResponse) . " is not yet supported or it is not a city in Zambia. Please try the closest city to your region:";
+
+                        // Demote user to level 2
+                        $sqlLevel2 = "UPDATE `session_levels` SET `level`=2 where `session_id`='" . $sessionId . "'";
+                        $db->query($sqlLevel2);
+                      }
+                    }
+
+                    else
+                    {
+                        $userCityL = strtolower($userResponse);
+
+                        // Check if valid City
+                        $sqlmapcheck = "SELECT * FROM coordinates WHERE LOWER(city) LIKE '%" . $userCityL . "%' LIMIT 1";
+                        $mapcheckQuery = $db->query($sqlmapcheck);
+                        $mapcheckAvailable = $mapcheckQuery->fetch_assoc();
+
+                        // Valid city
+                        if ($mapcheckAvailable && $mapcheckAvailable['lon']!= NULL && $mapcheckAvailable['lat']!= NULL) {
+                          $response = "END The 8 day forecast for " . ucfirst($userResponse) . " is: \n";
+                          require_once('pollen-weather-station.php');
+                        }
+
+                        // Invalid City
+                        else {
+                          $response = "CON We're sorry, but either " . ucfirst($userResponse) . " is not yet supported or it is not a city in Zambia. Please try the closest city to your region:";
+
+                          // Demote user to level 2
+                          $sqlLevel2 = "UPDATE `session_levels` SET `level`=2 where `session_id`='" . $sessionId . "'";
+                          $db->query($sqlLevel2);
+                        }
+
+                    }
+
+                } // End of elseif textarrray =3
+
                 // POLLEN PAY ACTIONS
                 elseif ($reverse[1] == 0)
                 {
@@ -281,7 +378,7 @@ if (!empty($_POST))
                   // HISTORY
                   elseif ($userResponse == 4)
                   {
-                    $response = "END Here is your transaction history: \n";
+                    $response = "END Transaction history: \n";
                     // Loop through txn history
                   }
 
@@ -293,37 +390,48 @@ if (!empty($_POST))
                         // KYC TEST
                         elseif ($userResponse == 5)
                         {
+                          // KOTANIPAY API KYC TEST
 
-                          // Define Auth Token
-                          $authToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjp7ImlkIjoxLCJ1c2VybmFtZSI6ImVyaWNwaG90b25zIiwiZW1haWwiOiJlcmljcGhvdG9uc0BnbWFpbC5jb20ifSwiaWF0IjoxNjA0OTQyMTEzLCJleHAiOjE2MDQ5NDIxNDN9.evTmEVLVfeDuWAXlABfqtPCFW-CJIZ7fyz5BvF_yZbg';
+                          //$authTokenGet = file_get_contents("https://europe-west3-kotanimac.cloudfunctions.net/savingsacco/api/login");
+                          //$authTokenGetJSON = json_decode($authTokenGet, true);
+
+                          // GET AUTH TOKEN FROM API
+                          $chauth = curl_init('https://europe-west3-kotanimac.cloudfunctions.net/savingsacco/api/login');
+                          curl_setopt_array($chauth, array(
+                            CURLOPT_POST => TRUE,
+                            CURLOPT_RETURNTRANSFER => TRUE,
+                             ));
+                            $authResponse = curl_exec($chauth);
+                            $authData = json_decode($authResponse, TRUE);
+                            $authToken = $authData['token'];
 
                           // Define KYC Variables  (REPLACE WITH INFO FROM DATABASE)
                           $dateofbirth = '1999-08-18';
                           $email = 'ericphotons@gmail.com';
-                          //$phoneNumber = '';
+                          $phoneNumber2 = '+254701234567';
                           $documentType = 'ID';
                           $documentNumber = '123456789';
                           $firstName = 'Eric';
                           $lastName = 'Cuellar';
 
-                          // The data to send to the API
+                          // Format data to push
                           $postData = array(
                               'dateofbirth' => $dateofbirth ,
                               'email' => $email ,
-                              'phoneNumber' => $phoneNumber ,
+                              'phoneNumber' => $phoneNumber2 ,
                               'documentType' => $documentType ,
                               'documentNumber' => $documentNumber ,
                               'firstName' => $firstName ,
                               'lastName' => $lastName ,
                           );
 
-                          // Setup cURL
+                          // PUSH KYC TO API
                           $ch = curl_init('https://europe-west3-kotanimac.cloudfunctions.net/savingsacco/api/kyc');
                           curl_setopt_array($ch, array(
                               CURLOPT_POST => TRUE,
                               CURLOPT_RETURNTRANSFER => TRUE,
                               CURLOPT_HTTPHEADER => array(
-                                  'Authorization: '.$authToken,
+                                  'Authorization: bearer '.$authToken,
                                   'Content-Type: application/json'
                               ),
                               CURLOPT_POSTFIELDS => json_encode($postData)
@@ -333,15 +441,44 @@ if (!empty($_POST))
                           $APIresponse = curl_exec($ch);
 
                           // Check for errors
-                          //if($APIresponse === FALSE){
-                              //die(curl_error($ch));
-                          //}
+                          if($APIresponse === FALSE){
+                              die(curl_error($ch));
+                          }
 
                           // Decode the response
                           $responseData = json_decode($APIresponse, TRUE);
 
-                          $response = "CON A ".$responseData['status']."\n";
+                          //$response = "CON A ".$responseData['status']."\n";
                           //print_r($responseData, TRUE);
+
+                          // CHECK FUNDS (DELETE ME)
+                          $postData1 = array(
+                              'phoneNumber' => $phoneNumber2 ,
+                          );
+
+                          $ch1 = curl_init('https://europe-west3-kotanimac.cloudfunctions.net/savingsacco/api/getbalance');
+                          curl_setopt_array($ch1, array(
+                              CURLOPT_POST => TRUE,
+                              CURLOPT_RETURNTRANSFER => TRUE,
+                              CURLOPT_HTTPHEADER => array(
+                                  'Authorization: bearer '.$authToken,
+                                  'Content-Type: application/json'
+                              ),
+                              CURLOPT_POSTFIELDS => json_encode($postData1)
+                          ));
+
+                          // Send the request
+                          $APIresponse1 = curl_exec($ch1);
+
+                          // Check for errors
+                          if($APIresponse1 === FALSE){
+                              die(curl_error($ch));
+                          }
+
+                          // Decode the response
+                          $responseData1 = json_decode($APIresponse1, TRUE);
+
+
 
                             // SUCCESS
                             if ($responseData['status'] == 'success')
@@ -351,19 +488,18 @@ if (!empty($_POST))
                             // ERROR: USER EXISTS
                             elseif ($responseData['status'] == 'active')
                             {
-                              $response = "END Oops, looks like you've already signed up! Dial back to use our services.";
+                              $response = "END Oops, looks like you've already signed up! Dial back to use our services. \n";
+                              //print_r($responseData1);
+
+                              // Balance print
+                              $response .= "" . $responseData1['address'] . "\n" . $responseData1['balance']['cusd'] . "\n" . $responseData1['balance']['celo'] ."" ;
                             }
                             // ERROR: ELSE
-                            //else
-                            //{
-                              //$response = "END Oops, looks like we're having some issues. Please try again later or contact support if the issue continues. ";
-                            //}
-
-
-                          // Print the date from the response
-                          //echo $responseData['published'];
-
-                      
+                            else
+                            {
+                              $response = "END Oops, looks like we're having some issues. Please try again later or contact support if the issue continues. \n";
+                              $response .= "Error: " . $responseData['status'] . "";
+                            }
 
                         }  // end of KYC test
 
@@ -509,64 +645,7 @@ if (!empty($_POST))
                     }
                 }
 
-                // WEATHER STATION LEVEL 2
-                elseif ( $reverse[1] == 3 || $textArray[0] == 3 )  //$invalidCity == 1  || $reverse[2] == 3
-                {
-
-                    if ($userResponse == 1)
-                    {
-                      // Check if valid City
-                      $sqlmapcheck = "SELECT * FROM coordinates WHERE LOWER(city) LIKE '%" . $userCityL . "%' LIMIT 1";
-                      $mapcheckQuery = $db->query($sqlmapcheck);
-                      $mapcheckAvailable = $mapcheckQuery->fetch_assoc();
-
-                      // Valid city
-                      if ($mapcheckAvailable && $mapcheckAvailable['lon']!= NULL && $mapcheckAvailable['lat']!= NULL) {
-                        $response = "END The 8 day forecast for " . ucfirst($userCity) . " is: \n";
-                        require_once('pollen-weather-station.php');
-                      }
-
-                      // Invalid City
-                      else {
-                        $response = "CON We're sorry, but either " . ucfirst($userResponse) . " is not yet supported or it is not a city in Zambia. Please try the closest city to your region:";
-
-                        // Demote user to level 2
-                        $sqlLevel2 = "UPDATE `session_levels` SET `level`=2 where `session_id`='" . $sessionId . "'";
-                        $db->query($sqlLevel2);
-                      }
-                    }
-
-                    else
-                    {
-                        $userCityL = strtolower($userResponse);
-
-                        // Check if valid City
-                        $sqlmapcheck = "SELECT * FROM coordinates WHERE LOWER(city) LIKE '%" . $userCityL . "%' LIMIT 1";
-                        $mapcheckQuery = $db->query($sqlmapcheck);
-                        $mapcheckAvailable = $mapcheckQuery->fetch_assoc();
-
-                        // Valid city
-                        if ($mapcheckAvailable && $mapcheckAvailable['lon']!= NULL && $mapcheckAvailable['lat']!= NULL) {
-                          $response = "END The 8 day forecast for " . ucfirst($userResponse) . " is: \n";
-                          require_once('pollen-weather-station.php');
-                        }
-
-                        // Invalid City
-                        else {
-                          $response = "CON We're sorry, but either " . ucfirst($userResponse) . " is not yet supported or it is not a city in Zambia. Please try the closest city to your region:";
-
-                          // Demote user to level 2
-                          $sqlLevel2 = "UPDATE `session_levels` SET `level`=2 where `session_id`='" . $sessionId . "'";
-                          $db->query($sqlLevel2);
-                        }
-
-                    }
-
-
-
-                    // PULL LAT LON DATA CODE WAS HERE XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-
-                } // End of elseif textarrray =3
+                // WEATHER STATION HERE
 
                 // MAIZE PRICES
                 elseif ($reverse[1] == 4 && ( $userResponse == 1 || $userResponse == 2 )) // || $reverse[2] == 4
@@ -838,20 +917,42 @@ if (!empty($_POST))
                           $proposerNameAvailable = mysqli_fetch_assoc($resultProposerName);
                           $proposerName = ucfirst($proposerNameAvailable['username']);
 
-                          // WITHDRAWAL
-                          if ($action == "Withdrawal")
+                          // CHECK IF PROPOSAL AVAILABLE
+                          $sqlProposal = "SELECT * FROM circleProposals WHERE circleID LIKE '%" . $circleSelect . "%' && result is NULL";
+                          $proposalQuery = $db->query($sqlProposal);
+                          $proposalAvailable = $proposalQuery->fetch_assoc();
+                          $txnhash = $proposalAvailable['txnhash'];
+
+                          // CHECK IF USER HAS ALREADY VOTED
+                          $sqlVoteCheck = "SELECT * FROM votes WHERE phonenumber LIKE '%" . $phoneNumber . "%' && txnhash LIKE '%" . $txnhash . "%'";
+                          $voteCheckQuery  = $db->query($sqlVoteCheck);
+                          $voteCheckAvailable = $voteCheckQuery->fetch_assoc();
+
+                          // User has voted
+                          if ($voteCheckAvailable != NULL)
                           {
-                              $response = "CON " . $proposerName . " has requested " . $value . " ZMW from " . ucfirst($circleSelect) . "\n";
+                            $response = "END There are no proposals for you to vote on.";
+                            //demote and list circle select menu
                           }
 
-                          // MEMBER ADD
-                          elseif ($action == "MemberAdd")
-                          {
-                              $response = "CON " . $proposerName . " has requested to add " . $value . " to " . ucfirst($circleSelect) . "\n";
-                          }
+                          else {
 
-                          $response .= "1. Vote YES \n";
-                          $response .= "0. Vote NO \n";
+                            // WITHDRAWAL
+                            if ($action == "Withdrawal")
+                            {
+                                $response = "CON " . $proposerName . " has requested " . $value . " ZMW from " . ucfirst($circleSelect) . "\n";
+                            }
+
+                            // MEMBER ADD
+                            elseif ($action == "MemberAdd")
+                            {
+                                $response = "CON " . $proposerName . " has requested to add " . $value . " to " . ucfirst($circleSelect) . "\n";
+                            }
+
+                            $response .= "1. Vote YES \n";
+                            $response .= "0. Vote NO \n";
+
+                        }
 
                       }
 
@@ -1361,12 +1462,87 @@ if (!empty($_POST))
               if ($userResponse == $userPin)
               {
                 // Execute KOTANIPAY request
+                $chauth = curl_init('https://europe-west3-kotanimac.cloudfunctions.net/savingsacco/api/login');
+                curl_setopt_array($chauth, array(
+                  CURLOPT_POST => TRUE,
+                  CURLOPT_RETURNTRANSFER => TRUE,
+                   ));
 
-                // SUCCESSFUL
-                $response = "END You have successfully sent " . $reverse[1] . " ZWA to " . $reverse[2] . ". ";
+                  $authResponse = curl_exec($chauth);
+                  $authData = json_decode($authResponse, TRUE);
+
+                // Define Auth Token
+                $authToken = $authData['token'];
+
+                // Define SEND VARIABLES
+                //$recipient = '0720670789';
+                $phoneNumber2 = '254701234567';
+                $recipient = $reverse[2];
+                $amount = $reverse[1];
+
+                // The data to send to the API
+                $postData = array(
+                    'phoneNumber' => $phoneNumber2 ,
+                    'recipient' => $recipient ,
+                    'amount' => $amount ,
+                );
+
+                // Setup cURL
+                $ch = curl_init('https://europe-west3-kotanimac.cloudfunctions.net/savingsacco/api/sendfunds');
+                curl_setopt_array($ch, array(
+                    CURLOPT_POST => TRUE,
+                    CURLOPT_RETURNTRANSFER => TRUE,
+                    CURLOPT_HTTPHEADER => array(
+                        'Authorization: bearer '.$authToken,
+                        'Content-Type: application/json'
+                    ),
+                    CURLOPT_POSTFIELDS => json_encode($postData)
+                ));
+
+                // Send the request
+                $APIresponse = curl_exec($ch);
+
+                // Check for errors
+                if($APIresponse === FALSE){
+                    die(curl_error($ch));
+                }
+
+                // Decode the response
+                $responseData = json_decode($APIresponse, TRUE);
+
+                //$response = "CON A ".$responseData['status']."\n";
+                //print_r($responseData, TRUE);
+
+                  // SUCCESS
+                  if ($responseData['status'] == 'success')
+                  {
+                    $response = "END You have successfully sent " . $reverse[1] . " ZWA to " . $reverse[2] . ". ";
+                  }
+
+                  // ERROR 1
+                  elseif ($responseData['status'] == 'unverified')
+                  {
+                    $response = "END Oops, you have not signed up for Pollen yet! Please dial back and sign up.";
+                  }
+
+                  // ERROR 2
+                  elseif ($responseData['status'] == 'error')
+                  {
+                    $response = "END Oops, " . $recipient . " is not registered with Pollen. \n";
+                  }
+
+                  // ERROR 2
+                  elseif ($responseData['status'] == 'failed')
+                  {
+                    $response = "END Oops, you don't have enough funds to fufill this request. ";
+                    $response .= "Error: " . $responseData['status'] . "";
+                  }
+
                 // ERROR
 
               }
+
+              // INVALID PIN
               else
               {
                 $response = "END The pin you entered is not correct. Please dial back and try again. ";
@@ -1553,29 +1729,6 @@ if (!empty($_POST))
                     //header('Content-type: text/plain');
                     echo $response;
                 break;
-
-                    //case "8":
-                    //$sqlpinCheck = "SELECT * FROM users WHERE phonenumber LIKE '%" . $phoneNumber . "%'";
-                    //$pinCheckQuery  = $db->query($sqlpinCheck);
-                    //$pinCheckAvailable = $pinCheckQuery->fetch_assoc();
-                    //$pinCheck = $pinCheckAvailable['pin'];
-                    //if ($userResponse == $pinCheck) {
-                    // We graduate the user to level 9
-                    //$sql15 = "UPDATE `session_levels` SET `level`=9 WHERE `session_id`='".$sessionId."'";
-                    //$db->query($sql15);
-                    //$response = "END Sweet! Congratualations on registering with Pollen :) Dial back to see services.";
-                    //header('Content-type: text/plain');
-                    //echo $response;
-                    //  }
-                    //  else {
-                    //$sqlDemotePin = "UPDATE `session_levels` SET `level`=8 WHERE `session_id`='".$sessionId."'";
-                    //$db->query($sqlDemotePin);
-                    //$response = "CON Oops, that did't match what you told us. Please try again.";
-                    //header('Content-type: text/plain');
-                    //echo $response;
-                    //}
-                    //  break;
-
 
 
                 default:
