@@ -6,43 +6,43 @@ if (!empty($_POST))
     require_once ('USSD-ATGateway.php');
     require_once ('USSD-config.php');
 
-    // receive the POST from AT
-    $sessionId = $_POST['sessionId'];
-    $serviceCode = $_POST['serviceCode'];
-    $phoneNumber = $_POST['phoneNumber'];
-    $text = $_POST['text'];
+      // receive the POST from AT
+      $sessionId = $_POST['sessionId'];
+      $serviceCode = $_POST['serviceCode'];
+      $phoneNumber = $_POST['phoneNumber'];
+      $text = $_POST['text'];
 
-    // Explode the text to get the value of the latest interaction - think 1*1
-    $textArray = explode('*', $text);
-    $userResponse = trim(end($textArray));
+      // Explode the text to get the value of the latest interaction - think 1*1
+      $textArray = explode('*', $text);
+      $userResponse = trim(end($textArray));
 
-    // Set the default level of the user
-    $level = 0;
+      // Set the default level of the user
+      $level = 0;
 
-    // Define R, the variable used to auto incriment menu option numbers (for dynamic length DB queries)
-    $r = 1;
+      // Define R, the variable used to auto incriment menu option numbers (for dynamic length DB queries)
+      $r = 1;
 
-    // Check the level of the user from the DB and retain default level if none is found for this session
-    $sql = "select level from session_levels where session_id ='" . $sessionId . " '";
-    $levelQuery = $db->query($sql);
-    if ($result = $levelQuery->fetch_assoc())
-    {
-        $level = $result['level'];
-    }
+      // Check the level of the user from the DB and retain default level if none is found for this session
+      $sql = "select level from session_levels where session_id ='" . $sessionId . " '";
+      $levelQuery = $db->query($sql);
+      if ($result = $levelQuery->fetch_assoc())
+      {
+          $level = $result['level'];
+      }
 
-    // Check if the user is in the db
-    $sql7 = "SELECT * FROM users WHERE phonenumber LIKE '%" . $phoneNumber . "%' LIMIT 1";
-    $userQuery = $db->query($sql7);
-    $userAvailable = $userQuery->fetch_assoc();
+      // Check if the user is in the db
+      $sql7 = "SELECT * FROM users WHERE phonenumber LIKE '%" . $phoneNumber . "%' LIMIT 1";
+      $userQuery = $db->query($sql7);
+      $userAvailable = $userQuery->fetch_assoc();
 
-    // Pull user city from DB
-    $userCity = $userAvailable['city'];
+      // Pull user city from DB
+      $userCityL = strtolower($userAvailable['city']);
 
-    // Pull User Secret pin
-    $userPin = $userAvailable['pin'];
+      // Pull User Secret pin
+      $userPin = $userAvailable['pin'];
 
-    // Reverse Text Array for backtracking
-    $reverse = array_reverse($textArray);
+      // Reverse Text Array for backtracking
+      $reverse = array_reverse($textArray);
 
     // Check if the user is available (yes)->Serve the menu; (no)->Register the user
     if ($userAvailable && $userAvailable['city'] != NULL && $userAvailable['username'] != NULL && $userAvailable['pin'] != NULL)
@@ -151,7 +151,7 @@ if (!empty($_POST))
                 elseif ($userResponse == 3)
                 {
                     $response = "CON Weather Station
-                      1. " . ucfirst($userCity) . " Weather
+                      1. " . ucfirst($userCityL) . " Weather
                       or Enter a city in Zambia ";
 
                     $sql = "select level from session_levels where session_id ='" . $sessionId . " '";
@@ -217,6 +217,7 @@ if (!empty($_POST))
                     $authToken = $authData['token'];
                   //define vars
                   $phoneNumber2 = '+254701234567';
+                  //$phoneNumber2 = '+26097302802';
                   $postData = array(
                       'phoneNumber' => $phoneNumber2 ,
                   );
@@ -246,8 +247,9 @@ if (!empty($_POST))
                   // Balance print
                   //$response .= "" . $responseData1['address'] . "\n" . $responseData1['balance']['cusd'] . "\n" . $responseData1['balance']['celo'] ."" ;
 
-                  $response = "CON Your Balance: " . $userBalance . " ZWA
-                   cUSD: " . $responseData['balance']['cusd'] . ", CELO: " . $responseData['balance']['celo'] . "
+                  // . $userBalance . " ZWA
+                  $response = "CON Your Balance
+                  cUSD: " . $responseData['balance']['cusd'] . ", CELO: " . $responseData['balance']['celo'] . "" . $authToken . "
                    1. Send Funds
                    2. Deposit Mobile Money
                    3. Withdraw to Mobile Money
@@ -311,7 +313,7 @@ if (!empty($_POST))
 
                       // Valid city
                       if ($mapcheckAvailable && $mapcheckAvailable['lon']!= NULL && $mapcheckAvailable['lat']!= NULL) {
-                        $response = "END The 8 day forecast for " . ucfirst($userCity) . " is: \n";
+                        $response = "END The 8 day forecast for " . ucfirst($userCityL) . " is: \n";
                         require_once('pollen-weather-station.php');
                       }
 
@@ -873,8 +875,12 @@ if (!empty($_POST))
 
                   }
 
+                  elseif ($userResponse == 4) {
+
+                  }
+
                   // LEAVE CIRCLE
-                  elseif ($userResponse == 4)
+                  elseif ($userResponse == 5)
                   {
 
                       // Check if user is in debt !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1162,7 +1168,7 @@ if (!empty($_POST))
                       $response .= "Circle Balance: " . $circleBalance . " ZMW \n";
                   }
 
-                  // Money Request Receipt
+                  // Money Request Reason
                   elseif ($reverse[1] == 3)
                   {
 
@@ -1174,45 +1180,7 @@ if (!empty($_POST))
 
                       if ($circleBalance >= $userResponse)
                       {
-
-                          // Fetch current # of proposals so we can update txnhash
-                          $sqlProposalCount = "SELECT txnhash FROM circleProposals";
-                          //$sqlProposalCount = "SELECT txnhash FROM circleProposals WHERE circleID LIKE '%" . $circleSelect . "%'";
-                          $proposalCountQuery = $db->query($sqlProposalCount);
-                          $proposalCount = mysqli_num_rows($proposalCountQuery);
-                          $newProposalCount = $proposalCount++;
-
-                          // Log withdrawal request in proposals db
-                          $sqlWithdrawalRequest = "INSERT INTO `circleProposals`(`circleID`,`txnhash`,`phonenumber`,`action`,`value`) VALUES('" . $circleSelect . "','" . $newProposalCount . "','" . $phoneNumber . "','Withdrawal','" . $userResponse . "')";
-                          $resultWithdrawalRequest = mysqli_query($db, $sqlWithdrawalRequest);
-
-                          // SEND SMS
-                          // Fetch members of the circle
-                          $sqlcircleMembers = "SELECT phonenumber FROM circleMembers WHERE circleID LIKE '%" . $circleSelect . "%' ";
-                          $resultCircleMembers = mysqli_query($db, $sqlcircleMembers);
-                          $circleMembers = "";
-
-                          // Fetch Requestor's name
-                          $sqlRequesterName = "SELECT username FROM users WHERE phonenumber LIKE '%" . $phoneNumber . "%' ";
-                          $resultRequesterName = mysqli_query($db, $sqlRequesterName);
-                          $requesterNameAvailable = mysqli_fetch_assoc($resultRequesterName);
-                          $requesterName = ucfirst($requesterNameAvailable['username']);
-
-                          //Loop through circleMembers
-                          while ($circleMembers = mysqli_fetch_assoc($resultCircleMembers))
-                          {
-                              $circleMembers = $circleMembers['phonenumber'];
-
-                              // SEND SMS VIA AT GATEWAY
-                              $message = "Proposal: Withdraw Funds \n Circle: " . $circleSelect . "\n  Requestor: " . $requesterName . ", " . $phoneNumber . " \n Amount: " . $userResponse . " ZMW \n Dial into USSD to vote *384*313233#";
-                              $recipient = $circleMembers;
-                              $gateway = new AfricasTalkingGateway($username, $apikey, "sandbox");
-                              $gateway->sendMessage($recipient, $message);
-                          }
-                          $response = "END Your request for " . $userResponse . " ZMW from " . ucfirst($circleSelect) . " has been submitted for vote. \n";
-                          $response .= "Proposal ID: " . $newProposalCount . "\n";
-                          //$response .= "" . $proposalCount . "";
-
+                        $response = "CON What do you need the funds for?";
                       }
 
                       else
@@ -1453,7 +1421,7 @@ if (!empty($_POST))
 
 
 
-            case "5":
+           case "5":
 
             // POLLEN PAY SEND (API call and receipt)
             if ($textArray[0] == 0 || $reverse[4] == 0)
@@ -1548,6 +1516,62 @@ if (!empty($_POST))
                 $response = "END The pin you entered is not correct. Please dial back and try again. ";
               }
             }
+
+            // WITHDRAWAL RECEIPT
+            elseif ($textArray[0] == 1 || $reverse[4] == 1) {
+
+              // ReFetch circleSelect data
+              $sqlselect = "SELECT * FROM session_levels WHERE session_id LIKE '%" . $sessionId . "%'";
+              $selectQuery = $db->query($sqlselect);
+              $selectAvailable = $selectQuery->fetch_assoc();
+              $circleSelect = $selectAvailable['circleSelect'];
+
+              // Query circleBalance, check if userResponse > circleBalance
+              $sqlCircleBalance = "SELECT balance FROM circles WHERE circleID LIKE '%" . $circleSelect . "%'";
+              $resultCircleBalance = mysqli_query($db, $sqlCircleBalance);
+              $circleBalanceAvailable = mysqli_fetch_assoc($resultCircleBalance);
+              $circleBalance = $circleBalanceAvailable['balance'];
+
+              // Fetch current # of proposals so we can update txnhash
+              $sqlProposalCount = "SELECT txnhash FROM circleProposals";
+              //$sqlProposalCount = "SELECT txnhash FROM circleProposals WHERE circleID LIKE '%" . $circleSelect . "%'";
+              $proposalCountQuery = $db->query($sqlProposalCount);
+              $proposalCount = mysqli_num_rows($proposalCountQuery);
+              $newProposalCount = $proposalCount++;
+
+              // Log withdrawal request in proposals db
+              $sqlWithdrawalRequest = "INSERT INTO `circleProposals`(`circleID`,`txnhash`,`phonenumber`,`action`,`value`,`desc`) VALUES('" . $circleSelect . "','" . $newProposalCount . "','" . $phoneNumber . "','Withdrawal','" . $reverse[1] . "','" . $userResponse . "')";
+              $resultWithdrawalRequest = mysqli_query($db, $sqlWithdrawalRequest);
+
+              // SEND SMS
+              // Fetch members of the circle
+              $sqlcircleMembers = "SELECT phonenumber FROM circleMembers WHERE circleID LIKE '%" . $circleSelect . "%' ";
+              $resultCircleMembers = mysqli_query($db, $sqlcircleMembers);
+              $circleMembers = "";
+
+              // Fetch Requestor's name
+              $sqlRequesterName = "SELECT username FROM users WHERE phonenumber LIKE '%" . $phoneNumber . "%' ";
+              $resultRequesterName = mysqli_query($db, $sqlRequesterName);
+              $requesterNameAvailable = mysqli_fetch_assoc($resultRequesterName);
+              $requesterName = ucfirst($requesterNameAvailable['username']);
+
+              //Loop through circleMembers
+              while ($circleMembers = mysqli_fetch_assoc($resultCircleMembers))
+              {
+                  $circleMembers = $circleMembers['phonenumber'];
+
+                  // SEND SMS VIA AT GATEWAY
+                  $message = "Proposal: Withdraw Funds \n Circle: " . $circleSelect . "\n  Requestor: " . $requesterName . ", " . $phoneNumber . " \n Amount: " . $reverse[1] . " ZMW \n Reason: " . $userResponse . "\n Dial into USSD to vote *384*313233#";
+                  $recipient = $circleMembers;
+                  $gateway = new AfricasTalkingGateway($username, $apikey, "sandbox");
+                  $gateway->sendMessage($recipient, $message);
+              }
+              $response = "END Your request for " . $reverse[1] . " ZMW from " . ucfirst($circleSelect) . " has been submitted for vote. \n";
+              $response .= "Proposal ID: " . $newProposalCount . "\n";
+              //$response .= "" . $proposalCount . "";
+
+            }
+
             header('Content-type: text/plain');
             echo $response;
 
@@ -1558,7 +1582,7 @@ if (!empty($_POST))
 
     } //end of if ($userAvailable && $userAvailable['city'])
 
-
+// Register
     else
     {
         // Register the user
@@ -1728,7 +1752,39 @@ if (!empty($_POST))
                     //$response = "CON Let's make sure you remember it! Please enter you secret pin.";
                     //header('Content-type: text/plain');
                     echo $response;
+
+                    // Email admin
+                    $msg = "Name: " . ucfirst($textArray[0]) . " " . ucfirst($textArray[1]) . "
+                            Location: " . ucfirst($textArray[2]) . "
+                            Crops: " . $textArray[3] . "
+                            Phone Number: " . $phoneNumber ;
+                    $msg = wordwrap($msg,70);
+                    mail("ericphotons@gmail.com","New User from ".$textArray[2],$msg);
+
                 break;
+
+                    //case "8":
+                    //$sqlpinCheck = "SELECT * FROM users WHERE phonenumber LIKE '%" . $phoneNumber . "%'";
+                    //$pinCheckQuery  = $db->query($sqlpinCheck);
+                    //$pinCheckAvailable = $pinCheckQuery->fetch_assoc();
+                    //$pinCheck = $pinCheckAvailable['pin'];
+                    //if ($userResponse == $pinCheck) {
+                    // We graduate the user to level 9
+                    //$sql15 = "UPDATE `session_levels` SET `level`=9 WHERE `session_id`='".$sessionId."'";
+                    //$db->query($sql15);
+                    //$response = "END Sweet! Congratualations on registering with Pollen :) Dial back to see services.";
+                    //header('Content-type: text/plain');
+                    //echo $response;
+                    //  }
+                    //  else {
+                    //$sqlDemotePin = "UPDATE `session_levels` SET `level`=8 WHERE `session_id`='".$sessionId."'";
+                    //$db->query($sqlDemotePin);
+                    //$response = "CON Oops, that did't match what you told us. Please try again.";
+                    //header('Content-type: text/plain');
+                    //echo $response;
+                    //}
+                    //  break;
+
 
 
                 default:
