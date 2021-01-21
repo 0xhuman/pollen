@@ -1,44 +1,8 @@
 <?php
 
-// To Run: host code on a server, go to webpage, refresh page to re-execute script.
+// NOTE: MTN sandbox does not use the callback-url. Add this when your project is live
+// NOTE: all user-specific information (e.g. API keys) have been redacted. Be sure to insert your own.
 
-function celoToken() {
-  $ch = curl_init('https://europe-west3-kotanimac.cloudfunctions.net/savingsacco/api/login');
-  curl_setopt_array($ch, array(
-      CURLOPT_POST => TRUE,
-      CURLOPT_RETURNTRANSFER => TRUE,
-       ));
-       global $authResponse;
-       $authResponse = curl_exec($ch);
-       // Check for errors
-       //if($authResponse === FALSE){
-           //die(curl_error($ch)); }
-       $authData = json_decode($authResponse, TRUE);
-       global $authToken;
-       $authToken = $authData['token'];
-       return $authResponse;
-       return $authToken;
-}
-
-function celo($url, $authToken, $postData) {
-  // Define var, then map to an array $phoneNumber2 = '+254701234567'; $postData = array('phoneNumber' => $phoneNumber2 ,);
-  $ch = curl_init("' . $url . '");
-  curl_setopt_array($ch, array(
-      CURLOPT_POST => TRUE,
-      CURLOPT_RETURNTRANSFER => TRUE,
-      CURLOPT_HTTPHEADER => array(
-          'Authorization: bearer '.$authToken,
-          'Content-Type: application/json'),
-      CURLOPT_POSTFIELDS => json_encode($postData) ));
-  // Send the request
-  $APIresponse = curl_exec($ch);
-  // Check for errors
-  if($APIresponse === FALSE){
-      die(curl_error($ch)); }
-  // Decode the response
-  $responseData = json_decode($APIresponse, TRUE);
-  return $responseData;
-}
 
 function gen_uuid() {
     return sprintf( '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
@@ -64,7 +28,7 @@ function gen_uuid() {
 
 function mtnUser() {
   //define vars
-  $callbackURL = 'XXXXXXXXXXXXXXXXXXXXXXXXXX';                          // CHANGE ME
+  $callbackURL = 'XXXXXXXXXXXX';
   $postData = array(
       'providerCallbackHost' => $callbackURL ,);
 
@@ -74,8 +38,8 @@ function mtnUser() {
       CURLOPT_RETURNTRANSFER => TRUE,
       CURLOPT_HTTPHEADER => array(
         'Host: sandbox.momodeveloper.mtn.com',
-        'X-Reference-Id: XXXXXXXXXXXXXXXXXXXXXXXXXX',                   // CHANGE ME
-        'Ocp-Apim-Subscription-Key: XXXXXXXXXXXXXXXXXXXXXXXXXX',        // CHANGE ME
+        'X-Reference-Id: XXXXXXXXXXXX',              
+        'Ocp-Apim-Subscription-Key: XXXXXXXXXXXX',
         'Content-Type: application/json'),
       CURLOPT_POSTFIELDS => json_encode($postData) ));
   // Send the request
@@ -90,8 +54,6 @@ function mtnUser() {
   $response = curl_getinfo($ch, CURLINFO_HTTP_CODE);
   return $responseData;
   return $response;
-  //mtnUser();
-  //echo $response."";
   //echo $responseData['message']."\n";
   //echo $responseData['code']."\n";
 
@@ -99,8 +61,8 @@ function mtnUser() {
 
 function mtnTokenCollect() {
   // API User
-  $api_user = 'XXXXXXXXXXXXXXXXXXXXXXXXXX';                          // CHANGE ME
-  $api_key = 'XXXXXXXXXXXXXXXXXXXXXXXXXX';                           // CHANGE ME
+  $api_user = 'INSERT API USER';
+  $api_key = 'INSERT API KEY';
   global $api_user_and_key; global $basic_auth;
   $api_user_and_key  = $api_user . ':' . $api_key;
   // Basic Authorization
@@ -112,9 +74,12 @@ function mtnTokenCollect() {
       CURLOPT_POST => TRUE,
       CURLOPT_RETURNTRANSFER => TRUE,
       CURLOPT_HTTPHEADER => array(
-        'Host: sandbox.momodeveloper.mtn.com',            
+        'Host: sandbox.momodeveloper.mtn.com',
+        //'X-Reference-Id: XXXXXXXXXXXX',               // XXXXXXXXXXXXXXXXXXXXXXXX
         'Authorization: '. $basic_auth,
-        'Ocp-Apim-Subscription-Key: XXXXXXXXXXXXXXXXXXXXXXXXXX',    // CHANGE ME
+        //'X-Callback-Url: XXXXXXXXXXXX',
+        //'Authorization: '. $api_user,
+        'Ocp-Apim-Subscription-Key: XXXXXXXXXXXX',  // correct
         'Content-Type: application/json'),
       CURLOPT_POSTFIELDS => $postData ));
   // Send the request
@@ -161,25 +126,21 @@ function mtnCollect($uu_id, $bearerToken, $postJSON) {
       CURLOPT_POST => TRUE,
       CURLOPT_RETURNTRANSFER => TRUE,
       CURLOPT_HTTPHEADER => array(
-        'Host: sandbox.momodeveloper.mtn.com', 
+        //'Host: sandbox.momodeveloper.mtn.com',
         'Authorization: '. $bearerToken,
         'X-Reference-Id: ' . $uu_id,
         'X-Target-Environment: sandbox',
-        'Ocp-Apim-Subscription-Key: XXXXXXXXXXXXXXXXXXXXXXXXXX',    // CHANGE ME
+        'Ocp-Apim-Subscription-Key: XXXXXXXXXXXX',
         'Content-Type: application/json'),
       CURLOPT_POSTFIELDS => $postJSON ));
   // Send the request
   $APIresponse = curl_exec($ch);
-
-  //print_r($postJSON);
 
     // Decode the response
   global $responseData;
   $responseData = json_decode($APIresponse, TRUE);
   global $response;
   $response = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-  //print_r($APIresponse);
 
   // Check for errors
   if($APIresponse === FALSE){
@@ -189,15 +150,24 @@ function mtnCollect($uu_id, $bearerToken, $postJSON) {
   { echo "Collect:success! "; }
 
   elseif($response == 400)
-  { echo "Collect:badrequest!400 "; }
+  {    echo "Collect " . $responseData['statusCode'];
+   echo $responseData['message'];}
 
   elseif($response == 409)
-  { echo "Collect:conflict!409 "; }
+  {    echo "Collect " . $responseData['statusCode'];
+   echo $responseData['message']; }
 
   elseif($response == 500)
-  { echo "Collect:internalservererror!500 "; }
+  {    echo "Collect " . $responseData['statusCode'];
+   echo $responseData['message']; }
 
-  else { echo "Collect:fudge " .$response; }
+  else {    echo "Collect " . $responseData['statusCode'];
+   echo $responseData['message']; }
+
+  //print_r($response);
+  //echo $APIresponse;
+
+
 }
 
 function mtnCheckCollect($uu_id, $bearerToken) {
@@ -209,11 +179,11 @@ function mtnCheckCollect($uu_id, $bearerToken) {
       CURLOPT_HTTPGET => TRUE,
       CURLOPT_RETURNTRANSFER => TRUE,
       CURLOPT_HTTPHEADER => array(
-        'Host: sandbox.momodeveloper.mtn.com',
+        //'Host: sandbox.momodeveloper.mtn.com',
         'Authorization: '. $bearerToken,
         'X-Reference-Id: '. $uu_id,
         'X-Target-Environment: sandbox',
-        'Ocp-Apim-Subscription-Key: XXXXXXXXXXXXXXXXXXXXXXXXXX',                       // CHANGE ME
+        'Ocp-Apim-Subscription-Key: XXXXXXXXXXXX',
         'Content-Type: application/string'), //'Content-Type: application/json'),
       //CURLOPT_POSTFIELDS => $uu_id,
       ));
@@ -226,7 +196,11 @@ function mtnCheckCollect($uu_id, $bearerToken) {
   global $response;
   $response = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
+    //echo $responseData['statusCode']; echo $responseData['message'];
   //print_r($APIresponse);
+  //print_r($responseData);
+
+  //echo $responseData['status'];
 
   // Check for errors
   if($APIresponse === FALSE){
@@ -234,7 +208,19 @@ function mtnCheckCollect($uu_id, $bearerToken) {
       echo "Checkcollect:die";}
 
   elseif($response == 200)
-  { echo "Checkcollect:success! "; }//echo $responseData['status']; }
+  { echo "CheckcollectOK: "; //echo $responseData['status']; }
+      if ($responseData['status'] == 'PENDING'){
+          echo $responseData['status'];
+      }
+      elseif ($responseData['status'] == 'FAILED') {
+          echo $responseData['status'];
+          echo $responseData['reason'];
+      }
+      elseif ($responseData['status'] == 'SUCCESSFUL') {
+          echo "" . $responseData['status'] . "!";
+      }
+  }
+
 
   elseif($response == 400)
   { echo "Checkcollect:badrequest!400 "; }
@@ -258,7 +244,7 @@ function mtnCollectBalance($bearerToken) {
         'Host: sandbox.momodeveloper.mtn.com',
         'Authorization: '. $bearerToken,
         'X-Target-Environment: sandbox',
-        'Ocp-Apim-Subscription-Key: XXXXXXXXXXXXXXXXXXXXXXXXXX',                     // CHANGE ME
+        'Ocp-Apim-Subscription-Key: XXXXXXXXXXXX',
         'Content-Type: application/json'),
       //CURLOPT_POSTFIELDS => $postJSON
     ));
@@ -269,6 +255,8 @@ function mtnCollectBalance($bearerToken) {
     // Decode the response
   global $responseData;
   $responseData = json_decode($APIresponse, TRUE);
+  global $response;
+  $response = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
   if (array_key_exists('message', $responseData)) {
     if ($responseData['message'] == "Authorization failed. Insufficient permissions.") {
@@ -292,12 +280,76 @@ function mtnCollectBalance($bearerToken) {
 
   else { echo "Balance: fudge"; }
 
+  //print_r($responseData);
+  echo $response;
+
 }
+
+
+function mtnAccountActive($accountHolderIdType, $accountHolderId, $accountHolderJSON, $bearerToken) {
+
+  $ch = curl_init("https://sandbox.momodeveloper.mtn.com/collection/v1_0/accountholder/{$accountHolderIdType}/{$accountHolderId}/active");
+  curl_setopt_array($ch, array(
+      CURLOPT_HTTPGET => TRUE,
+      CURLOPT_RETURNTRANSFER => TRUE,
+      CURLOPT_HTTPHEADER => array(
+        'Host: sandbox.momodeveloper.mtn.com',
+        'Authorization: '. $bearerToken,
+        'X-Target-Environment: sandbox',
+        'Ocp-Apim-Subscription-Key: XXXXXXXXXXXX',
+        'Content-Type: application/json'),
+      //CURLOPT_POSTFIELDS => $accountHolderJSON
+    ));
+
+  // Send the request
+  $APIresponse = curl_exec($ch);
+
+    // Decode the response
+  global $responseData;
+  $responseData = json_decode($APIresponse, TRUE);
+
+  global $response;
+  $response = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+  if($response == '200') {
+        echo " userActive: 200 OK ";
+  }
+
+  elseif ($response == '400') {
+    echo " userActive:400";
+    print_r($responseData);
+  }
+
+  elseif ($response == '401') {
+    echo " userActive:401";
+    echo $responseData['statusCode'];
+    echo $responseData['message'];
+  }
+
+  elseif ($response == '500') {
+    echo " userActive:500";
+    echo $responseData['code'];
+    echo $responseData['message'];
+  }
+
+    else {
+      echo " userActive: " . $response . "" ;
+      print_r($responseData);
+    }
+
+    //print_r($responseData);
+    //echo $responseData['status'];
+
+
+}
+
+
+
 
 function mtnTokenDisburse() {
   // API User
-  $api_user = 'XXXXXXXXXXXXXXXXXXXXXXXXXX';                               // CHANGE ME
-  $api_key = 'XXXXXXXXXXXXXXXXXXXXXXXXXX';                                // CHANGE ME
+  $api_user = 'XXXXXXXXXXXX';
+  $api_key = 'XXXXXXXXXXXX';
   global $api_user_and_key; global $basic_auth;
   $api_user_and_key  = $api_user . ':' . $api_key;
   // Basic Authorization
@@ -311,7 +363,7 @@ function mtnTokenDisburse() {
       CURLOPT_HTTPHEADER => array(
         'Host: sandbox.momodeveloper.mtn.com',
         'Authorization: '. $basic_auth,
-        'Ocp-Apim-Subscription-Key: XXXXXXXXXXXXXXXXXXXXXXXXXX',            // CHANGE ME
+        'Ocp-Apim-Subscription-Key: XXXXXXXXXXXX',
         'Content-Type: application/json'),
       CURLOPT_POSTFIELDS => $postData ));
 
@@ -362,7 +414,7 @@ function mtnDisburse($uu_id2, $bearerToken2, $postJSON2) {
         'Authorization: '. $bearerToken2,
         'X-Reference-Id: '. $uu_id2,
         'X-Target-Environment: sandbox',
-        'Ocp-Apim-Subscription-Key: XXXXXXXXXXXXXXXXXXXXXXXXXX'),                       // CHANGE ME
+        'Ocp-Apim-Subscription-Key: XXXXXXXXXXXX'),
       CURLOPT_POSTFIELDS => $postJSON2 ));
   // Send the request
   $APIresponse = curl_exec($ch);
@@ -372,6 +424,10 @@ function mtnDisburse($uu_id2, $bearerToken2, $postJSON2) {
   $responseData = json_decode($APIresponse, TRUE);
   global $response;
   $response = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+  echo $responseData['statusCode'];
+  echo $responseData['message'];
+  //print_r($responseData);
 
   // Check for errors
   if($APIresponse === FALSE){
@@ -407,7 +463,7 @@ function mtnCheckDisburse($uu_id2, $bearerToken2) {
         'Authorization: '. $bearerToken2,
         'X-Reference-Id: '. $uu_id2,
         'X-Target-Environment: sandbox',
-        'Ocp-Apim-Subscription-Key: XXXXXXXXXXXXXXXXXXXXXXXXXX',                                    // CHANGE ME
+        'Ocp-Apim-Subscription-Key: XXXXXXXXXXXX',
         'Content-Type: application/string'), //'Content-Type: application/json'),
       //CURLOPT_POSTFIELDS => $uu_id,
       ));
@@ -452,7 +508,7 @@ function mtnDisburseBalance($bearerToken2) {
         'Host: sandbox.momodeveloper.mtn.com',
         'Authorization: '. $bearerToken2,
         'X-Target-Environment: sandbox',
-        'Ocp-Apim-Subscription-Key: XXXXXXXXXXXXXXXXXXXXXXXXXX',                    // CHANGE ME
+        'Ocp-Apim-Subscription-Key: XXXXXXXXXXXX',
         'Content-Type: application/json'),
     ));
 
@@ -489,18 +545,20 @@ function mtnDisburseBalance($bearerToken2) {
 
 // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
-
-// Here we test the code
-
+//mtnUser();
 mtnTokenCollect();
 
-  //global $uuid;
   $uuid = gen_uuid();
 
   // Request To Pay
   $amount = 100;
   $currency = "EUR";
-  $number = "46733123453";
+  //$number = "46733123450";  //FAILED
+  //$number = "46733123451";  //REJECTED
+  //$number = "46733123452";  //TIMEOUT
+  //$number = "46733123453";  //PENDING ->ONGOING
+  //$number = "46733123454";  //PENDING -> SUCCESS
+  $number = "4673323232123453";
   $timestamp = date('Ymd_Gis');
   //$payer = json_encode(array('partyIdType' => "MSISDN",'partyId' => $number,  ));
 
@@ -510,8 +568,8 @@ mtnTokenCollect();
   'externalId' => $timestamp,
   'payer' => array(
     'partyIdType' => "MSISDN",'partyId' => $number,),
-  'payerMessage' => "Payment of K".$amount,
-  'payeeNote' => "Payment of K".$amount." from ".$number,
+  'payerMessage' => "Payment of K".$amount." from ".$number,
+  'payeeNote' => "Click yes to approve",
   ));
 
   //$txnid = json_encode(array( 'referenceId'=> $uuid ));
@@ -520,11 +578,36 @@ mtnTokenCollect();
 
   mtnCheckCollect($uuid, $bearer_token);
 
+  $accountID = json_encode(array(
+      'accountHolderId' => $number,
+      'accountHolderIdType' => "msisdn",
+      ));
+
+    $accountHolderIdType = "msisdn";
+    $accountHolderId = $number;
+
+
+  mtnAccountActive($accountHolderIdType, $accountHolderId, $accountID, $bearer_token);
+
+  //if ($responseData['status']=='PENDING'){
+      //sleep(30);
+      //mtnCheckCollect($uuid, $bearer_token);
+      //$i=0;
+      //while ($responseData['status']=='PENDING' && $i < 3) {
+          //$i++;
+          //sleep(5);
+          //mtnCheckCollect($uuid, $bearer_token);
+      //}
+      //if ($responseData['status'] == 'SUCCESSFUL') {
+          //echo $responseData['status'];
+      //}
+  //}
+
   mtnCollectBalance($bearer_token);
 
-mtnTokenDisburse();
+//mtnTokenDisburse();
 
-  //echo $bearer_tokenD;
+            //echo $bearer_tokenD;
 
   $uuid2 = gen_uuid();
 
@@ -540,20 +623,12 @@ mtnTokenDisburse();
   'payeeNote' => "Payment of K".$amount." from ".$number,
   ));
 
-  mtnDisburse($uuid2, $bearer_tokenD, $REQUEST_BODY2);
+  //mtnDisburse($uuid2, $bearer_tokenD, $REQUEST_BODY2);
 
-  mtnCheckDisburse($uuid2, $bearer_tokenD);
+  //mtnCheckDisburse($uuid2, $bearer_tokenD);
 
-  mtnDisburseBalance($bearer_tokenD);
+  //mtnDisburseBalance($bearer_tokenD);
 
-
-
-
-
-
-// UUID: 16a77639-34b8-443b-bea6-82c2019f62f2
-/////// API key : de6460edd32c4140bcfa041f605fe583
-// providerCallbackHost": "http://pollen-ussd.000webhostapp.com/pollen-test1.php
 
 
 ?>
