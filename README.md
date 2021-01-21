@@ -23,6 +23,9 @@ In order to query the weekly forecast for any city in Zambia (or the world) we u
 #### KotaniPay (WIP)
 For communicating with the Celo Blockchain, we use the KotaniPay USSD to Celo gateway API from [KotaniLabs](https://www.linkedin.com/company/kotanilabs/?originalSubdomain=ke). The KotaniPay uses a POST API.
 
+#### MTN (WIP)
+For debiting/crediting MTN users' mobile money accounts (on-/off-ramps from Pollen to mobile money)
+
 #### Crop Prices (WIP)
 For this step you can pull data from many different sources. We partnered with a local government agency in Zambia and use their data.
 
