@@ -3,6 +3,23 @@
 // NOTE: MTN sandbox does not use the callback-url. Add this when your project is live
 // NOTE: all user-specific information (e.g. API keys) have been redacted. Be sure to insert your own.
 
+// FIXIE - static IP for Heroku Server
+function proxyRequest() {
+    $fixieUrl = getenv("FIXIE_URL");
+    $parsedFixieUrl = parse_url($fixieUrl);
+    $proxy = $parsedFixieUrl['host'].":".$parsedFixieUrl['port'];
+    $proxyAuth = $parsedFixieUrl['user'].":".$parsedFixieUrl['pass'];
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_PROXY, $proxy);
+    curl_setopt($ch, CURLOPT_PROXYUSERPWD, $proxyAuth);
+    curl_close($ch);
+  }
+  
+  $response = proxyRequest();
+  print_r($response);
+
+
 
 function gen_uuid() {
     return sprintf( '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
