@@ -5,7 +5,7 @@
 
 // FIXIE - static IP for Heroku Server
 function proxyRequest() {
-    $fixieUrl = getenv("http://fixie:7Qrh1LQwqKNiyum@velodrome.usefixie.com:80");
+    $fixieUrl = getenv('http://fixie:7Qrh1LQwqKNiyum@velodrome.usefixie.com:80');
     $parsedFixieUrl = parse_url($fixieUrl);
     $proxy = $parsedFixieUrl['host'].":".$parsedFixieUrl['port'];
     $proxyAuth = $parsedFixieUrl['user'].":".$parsedFixieUrl['pass'];
