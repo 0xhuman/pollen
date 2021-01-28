@@ -14,9 +14,9 @@
         curl_setopt($ch, CURLOPT_PROXYUSERPWD, $proxyAuth);
         curl_close($ch);
       }
-
-      $response = proxyRequest();
-      print_r($response);
+      proxyRequest();
+      //$response = proxyRequest();
+      //print_r($response);
 ?>
 
 <html>
