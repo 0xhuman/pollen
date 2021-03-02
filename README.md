@@ -1,4 +1,3 @@
-![](ignore/pollenlogoL.png)
 # USSD Savings Circles on Celo (WIP Project)
 
 #### Tech-Stack Diagram
