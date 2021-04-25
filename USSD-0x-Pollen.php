@@ -5,6 +5,7 @@ if (!empty($_POST))
     require_once ('USSD-dbConnect.php');
     require_once ('USSD-ATGateway.php');
     require_once ('USSD-config.php');
+    require_once ('pollen-functions.php');
 
       // receive the POST from AT
       $sessionId = $_POST['sessionId'];
@@ -19,27 +20,13 @@ if (!empty($_POST))
       // Set the default level of the user
       $level = 0;
 
-      // Define R, the variable used to auto incriment menu option numbers (for dynamic length DB queries)
-      $r = 1;
-
       // Check the level of the user from the DB and retain default level if none is found for this session
-      $sql = "select level from session_levels where session_id ='" . $sessionId . " '";
-      $levelQuery = $db->query($sql);
-      if ($result = $levelQuery->fetch_assoc())
-      {
-          $level = $result['level'];
-      }
+      userLevel($sessionId);
 
-      // Check if the user is in the db
-      $sql7 = "SELECT * FROM users WHERE phonenumber LIKE '%" . $phoneNumber . "%' LIMIT 1";
-      $userQuery = $db->query($sql7);
-      $userAvailable = $userQuery->fetch_assoc();
+      // Check if user is registered   |  $userAvailable
+      activeUser($phoneNumber);
 
-      // Pull user city from DB
-      $userCityL = strtolower($userAvailable['city']);
-
-      // Pull User Secret pin
-      $userPin = $userAvailable['pin'];
+      userCity($phoneNumber);
 
       // Reverse Text Array for backtracking
       $reverse = array_reverse($textArray);
@@ -54,26 +41,19 @@ if (!empty($_POST))
             // LEVEL 0 - HOME MENU
 
             case "0":
-                // Graduate user to next level & Serve Main Menu
-                $sql0 = "INSERT INTO `session_levels`(`session_id`,`phoneNumber`,`level`) VALUES('" . $sessionId . "','" . $phoneNumber . "',1)";
-                $resultUserLvl0 = mysqli_query($db, $sql0);
+                // Initiate user session
+                newSession($sessionId, $phoneNumber);
 
                 //Serve our services menu
-                $response = "CON Hi " . ucfirst($userAvailable['username']) . ". Welcome back! \n Please choose a service.
+                $response = "CON Hi " . ucfirst($userName) . ". Welcome back! \n Please choose a service.
                         1. My Circles
                         2. Join a Circle
                         3. Weather Station
                         4. Maize Prices
                         5. Livestock Services ";
                 //$response .= "4. Crop Prices";
-                $sql = "select level from session_levels where session_id ='" . $sessionId . " '";
-                $levelQuery = $db->query($sql);
-                if ($result = $levelQuery->fetch_assoc())
-                {
-                    $level = $result['level'];
-                }
 
-                //$response .= "4. " . $level1 . " \n";
+                userLevel($sessionId);
                 header('Content-type: text/plain');
                 echo $response;
             break;
@@ -85,66 +65,31 @@ if (!empty($_POST))
 
             case "1":
 
-                // Graduate user to level 2
-                $sqlLevel1 = "UPDATE `session_levels` SET `level`=2 where `session_id`='" . $sessionId . "'";
-                $db->query($sqlLevel1);
+                // Update user level  |  $level
+                updateLevel(2, $sessionId);
 
                 // MY CIRCLES
                 if ($userResponse == 1)
                 {
                     $response = "CON Please choose a circle.\n";
 
-                    $sqlmyCircles = "SELECT circleID FROM circleMembers WHERE phonenumber LIKE '%" . $phoneNumber . "%' LIMIT 3";
-                    $resultCircle = mysqli_query($db, $sqlmyCircles);
-                    $circleID = "";
+                    userCircles($phoneNumber);
 
-                    // Check if user is in a circle
-                    $circleCheckQuery =$db->query($sqlmyCircles);
-                    $circleCheckAvailable = $circleCheckQuery->fetch_assoc();
-
-                    // User IS in circles
-                    if ($circleCheckAvailable != NULL) {
-
-                      while ($circleID = mysqli_fetch_assoc($resultCircle))
-                      { // DOES THIS NEED TO BE FETCH ARRAY????
-                          // Fetch circleID
-                          $circleID = ucfirst($circleID['circleID']);
-                          // Set C# variables to circleID know order/index
-                          ${"c" . $r} = $circleID;
-                          // Set circleIndex in DB so we can access this in other swtich cases
-                          $sqlcircleIndex = "UPDATE circleMembers SET circleIndex = '" . $r . "' WHERE phonenumber LIKE '%" . $phoneNumber . "%' AND circleID LIKE '%" . $circleID . "' ";
-                          $db->query($sqlcircleIndex);
-                          $response .= "" . $r . ". " . $circleID . "\n";
-                          $r++;
-                      } //END of While loop
-
+                    // User IS in a circle
+                    if($userCircles != NULL) {
+                      $response .= $userCircles;
                     }
 
                     // User is NOT in a circle
                     else {
                       $response = "CON You are not in any circles. Reply b to go back: ";
                     }
-
-
-                    $sql = "select level from session_levels where session_id ='" . $sessionId . " '";
-                    $levelQuery = $db->query($sql);
-                    if ($result = $levelQuery->fetch_assoc()) {
-                        $level = $result['level'];
-                    }
-
                 }
 
                 // JOIN A CIRCLE
                 elseif ($userResponse == 2)
                 {
                     $response = "CON Please enter your circle invite code. \n";
-
-                    $sql = "select level from session_levels where session_id ='" . $sessionId . " '";
-                    $levelQuery = $db->query($sql);
-                    if ($result = $levelQuery->fetch_assoc())
-                    {
-                        $level = $result['level'];
-                    }
                 }
 
                 // WEATHER STATION
@@ -153,13 +98,6 @@ if (!empty($_POST))
                     $response = "CON Weather Station
                       1. " . ucfirst($userCityL) . " Weather
                       or Enter a city in Zambia ";
-
-                    $sql = "select level from session_levels where session_id ='" . $sessionId . " '";
-                    $levelQuery = $db->query($sql);
-                    if ($result = $levelQuery->fetch_assoc())
-                    {
-                        $level = $result['level'];
-                    }
                 }
 
                 // MAIZE PRICES
@@ -168,13 +106,6 @@ if (!empty($_POST))
                     $response = "CON Please select your maize type
                       1. Maize (White)
                       2. Roller Maize Meal ";
-
-                    $sql = "select level from session_levels where session_id ='" . $sessionId . " '";
-                    $levelQuery = $db->query($sql);
-                    if ($result = $levelQuery->fetch_assoc())
-                    {
-                        $level = $result['level'];
-                    }
                 }
 
                 // LIVESTOCK SERVICES
@@ -187,69 +118,20 @@ if (!empty($_POST))
                       4. Access Extension Services
                       5. Tell us your animal experience
                       6. What would you like to learn? ";
-
-                    $sql = "select level from session_levels where session_id ='" . $sessionId . " '";
-                    $levelQuery = $db->query($sql);
-                    if ($result = $levelQuery->fetch_assoc())
-                    {
-                        $level = $result['level'];
-                    }
                 }
 
                 // POLLEN PAY
                 elseif ($userResponse == 0)
                 {
-                  // query userBalance and sum circleBalance's
-                  $sqlUserBalance = "SELECT * FROM users WHERE phonenumber LIKE '%" . $phoneNumber . "%' LIMIT 1";
-                  $userBalanceQuery = $db->query($sqlUserBalance);
-                  $userBalanceAvailable = $userBalanceQuery->fetch_assoc();
-                  $userBalance = $userBalanceAvailable['balance'];
-
+                  userBalanceDB($phoneNumber);
                   // KOTANIPAY API
                   // get auth token
-                  $chauth = curl_init('https://europe-west3-kotanimac.cloudfunctions.net/savingsacco/api/login');
-                  curl_setopt_array($chauth, array(
-                    CURLOPT_POST => TRUE,
-                    CURLOPT_RETURNTRANSFER => TRUE,
-                     ));
-                    $authResponse = curl_exec($chauth);
-                    $authData = json_decode($authResponse, TRUE);
-                    $authToken = $authData['token'];
-                  //define vars
-                  $phoneNumber2 = '+254701234567';
-                  //$phoneNumber2 = '+26097302802';
-                  $postData = array(
-                      'phoneNumber' => $phoneNumber2 ,
-                  );
+                  kpAuth($phoneNumber);
+                  // ADD PHONE NUMBER      *************
+                  userBalance($phoneNumber);
 
-                  $ch = curl_init('https://europe-west3-kotanimac.cloudfunctions.net/savingsacco/api/getbalance');
-                  curl_setopt_array($ch, array(
-                      CURLOPT_POST => TRUE,
-                      CURLOPT_RETURNTRANSFER => TRUE,
-                      CURLOPT_HTTPHEADER => array(
-                          'Authorization: bearer '.$authToken,
-                          'Content-Type: application/json'
-                      ),
-                      CURLOPT_POSTFIELDS => json_encode($postData)
-                  ));
-
-                  // Send the request
-                  $APIresponse = curl_exec($ch);
-
-                  // Check for errors
-                  if($APIresponse === FALSE){
-                      die(curl_error($ch));
-                  }
-
-                  // Decode the response
-                  $responseData = json_decode($APIresponse, TRUE);
-
-                  // Balance print
-                  //$response .= "" . $responseData1['address'] . "\n" . $responseData1['balance']['cusd'] . "\n" . $responseData1['balance']['celo'] ."" ;
-
-                  // . $userBalance . " ZWA
                   $response = "CON Your Balance
-                  cUSD: " . $responseData['balance']['cusd'] . ", CELO: " . $responseData['balance']['celo'] . "" . $authToken . "
+                  cUSD: " . $userBalanceCUSD . ", CELO: " . $userBalanceCELO . "
                    1. Send Funds
                    2. Deposit Mobile Money
                    3. Withdraw to Mobile Money
@@ -271,6 +153,8 @@ if (!empty($_POST))
                       5. Livestock Services ";
                 }
 
+                userLevel($sessionId);
+
                 header('Content-type: text/plain');
                 echo $response;
 
@@ -283,9 +167,8 @@ if (!empty($_POST))
 
             case "2":
 
-                // Graduate user to level 3
-                $sqlLevel3 = "UPDATE `session_levels` SET `level`=3 where `session_id`='" . $sessionId . "'";
-                $db->query($sqlLevel3);
+                // Update user level  |  $level
+                updateLevel(3, $sessionId);
 
                 // GO BACK
                 if (strtolower($userResponse) == 'b') {
@@ -296,12 +179,11 @@ if (!empty($_POST))
                   4. Maize Prices
                   5. Livestock Services ";
                   // Demote user to level 1
-                  $sqlLevel1 = "UPDATE `session_levels` SET `level`=1 where `session_id`='" . $sessionId . "'";
-                  $db->query($sqlLevel1);
+                  updateLevel(1, $sessionId);
                 }
 
                 // WEATHER STATION LEVEL 2
-                elseif ( $textArray[0] == 3)  // || $reverse[1] == 3 || $reverse[2] == 3                 //$invalidCity == 1  || $reverse[2] == 3
+                elseif ( $textArray[0] == 3)
                 {
 
                     if ($userResponse == 1)
@@ -322,8 +204,7 @@ if (!empty($_POST))
                         $response = "CON We're sorry, but either " . ucfirst($userResponse) . " is not yet supported or it is not a city in Zambia. Please try the closest city to your region:";
 
                         // Demote user to level 2
-                        $sqlLevel2 = "UPDATE `session_levels` SET `level`=2 where `session_id`='" . $sessionId . "'";
-                        $db->query($sqlLevel2);
+                        updateLevel(2, $sessionId);
                       }
                     }
 
@@ -347,8 +228,7 @@ if (!empty($_POST))
                           $response = "CON We're sorry, but either " . ucfirst($userResponse) . " is not yet supported or it is not a city in Zambia. Please try the closest city to your region:";
 
                           // Demote user to level 2
-                          $sqlLevel2 = "UPDATE `session_levels` SET `level`=2 where `session_id`='" . $sessionId . "'";
-                          $db->query($sqlLevel2);
+                          updateLevel(2, $sessionId);
                         }
 
                     }
@@ -393,114 +273,32 @@ if (!empty($_POST))
                         elseif ($userResponse == 5)
                         {
                           // KOTANIPAY API KYC TEST
+                          // Get auth token  |  $authToken  (MUST RUN THIS EACH TIME YOU RUN A KP FUNCTION)
+                          kpAuth($phoneNumber);
 
-                          //$authTokenGet = file_get_contents("https://europe-west3-kotanimac.cloudfunctions.net/savingsacco/api/login");
-                          //$authTokenGetJSON = json_decode($authTokenGet, true);
-
-                          // GET AUTH TOKEN FROM API
-                          $chauth = curl_init('https://europe-west3-kotanimac.cloudfunctions.net/savingsacco/api/login');
-                          curl_setopt_array($chauth, array(
-                            CURLOPT_POST => TRUE,
-                            CURLOPT_RETURNTRANSFER => TRUE,
-                             ));
-                            $authResponse = curl_exec($chauth);
-                            $authData = json_decode($authResponse, TRUE);
-                            $authToken = $authData['token'];
-
-                          // Define KYC Variables  (REPLACE WITH INFO FROM DATABASE)
-                          $dateofbirth = '1999-08-18';
-                          $email = 'ericphotons@gmail.com';
-                          $phoneNumber2 = '+254701234567';
-                          $documentType = 'ID';
-                          $documentNumber = '123456789';
-                          $firstName = 'Eric';
-                          $lastName = 'Cuellar';
-
-                          // Format data to push
-                          $postData = array(
-                              'dateofbirth' => $dateofbirth ,
-                              'email' => $email ,
-                              'phoneNumber' => $phoneNumber2 ,
-                              'documentType' => $documentType ,
-                              'documentNumber' => $documentNumber ,
-                              'firstName' => $firstName ,
-                              'lastName' => $lastName ,
-                          );
-
-                          // PUSH KYC TO API
-                          $ch = curl_init('https://europe-west3-kotanimac.cloudfunctions.net/savingsacco/api/kyc');
-                          curl_setopt_array($ch, array(
-                              CURLOPT_POST => TRUE,
-                              CURLOPT_RETURNTRANSFER => TRUE,
-                              CURLOPT_HTTPHEADER => array(
-                                  'Authorization: bearer '.$authToken,
-                                  'Content-Type: application/json'
-                              ),
-                              CURLOPT_POSTFIELDS => json_encode($postData)
-                          ));
-
-                          // Send the request
-                          $APIresponse = curl_exec($ch);
-
-                          // Check for errors
-                          if($APIresponse === FALSE){
-                              die(curl_error($ch));
-                          }
-
-                          // Decode the response
-                          $responseData = json_decode($APIresponse, TRUE);
-
-                          //$response = "CON A ".$responseData['status']."\n";
-                          //print_r($responseData, TRUE);
-
-                          // CHECK FUNDS (DELETE ME)
-                          $postData1 = array(
-                              'phoneNumber' => $phoneNumber2 ,
-                          );
-
-                          $ch1 = curl_init('https://europe-west3-kotanimac.cloudfunctions.net/savingsacco/api/getbalance');
-                          curl_setopt_array($ch1, array(
-                              CURLOPT_POST => TRUE,
-                              CURLOPT_RETURNTRANSFER => TRUE,
-                              CURLOPT_HTTPHEADER => array(
-                                  'Authorization: bearer '.$authToken,
-                                  'Content-Type: application/json'
-                              ),
-                              CURLOPT_POSTFIELDS => json_encode($postData1)
-                          ));
-
-                          // Send the request
-                          $APIresponse1 = curl_exec($ch1);
-
-                          // Check for errors
-                          if($APIresponse1 === FALSE){
-                              die(curl_error($ch));
-                          }
-
-                          // Decode the response
-                          $responseData1 = json_decode($APIresponse1, TRUE);
-
-
+                          // KYC   \  $kycStatus  (either 'success' 'active' )       ******************************************
+                          kpKYC($phoneNumber);
+                          userBalance($phoneNumber);
 
                             // SUCCESS
-                            if ($responseData['status'] == 'success')
+                            if ($kycStatus == 'success')
                             {
                               $response = "END Congrats, you have completed our KYC! Dial back to use our services.";
                             }
                             // ERROR: USER EXISTS
-                            elseif ($responseData['status'] == 'active')
+                            elseif ($kycStatus == 'active')
                             {
                               $response = "END Oops, looks like you've already signed up! Dial back to use our services. \n";
                               //print_r($responseData1);
 
                               // Balance print
-                              $response .= "" . $responseData1['address'] . "\n" . $responseData1['balance']['cusd'] . "\n" . $responseData1['balance']['celo'] ."" ;
+                              $response .= "" . $userAddress . "\n" . $userBalanceCUSD . "\n" . $userBalanceCELO ."" ;
                             }
                             // ERROR: ELSE
                             else
                             {
                               $response = "END Oops, looks like we're having some issues. Please try again later or contact support if the issue continues. \n";
-                              $response .= "Error: " . $responseData['status'] . "";
+                              $response .= "Error: " . $kycStatus['status'] . "" . $responseData . "";
                             }
 
                         }  // end of KYC test
@@ -514,43 +312,20 @@ if (!empty($_POST))
                 elseif ($reverse[1] == 1 && ( $userResponse == 1 || $userResponse == 2 || $userResponse == 3 || $userResponse == 4 || $userResponse == 5 ))
                 {
 
-                    // Fetch circleMembers data
-                    $sqlcircle2 = "SELECT * FROM circleMembers WHERE phonenumber LIKE '%" . $phoneNumber . "%' AND circleIndex LIKE '%" . $userResponse . "'";
-                    $circleQuery2 = $db->query($sqlcircle2);
-                    $circlesAvailable = $circleQuery2->fetch_assoc();
-                    $circleSelect = $circlesAvailable['circleID'];
-
-                    // Add CIRCLESELECT to db
-                    $sqlcircleSelect = "UPDATE session_levels SET circleSelect ='" . $circleSelect . "' where `session_id`='" . $sessionId . "'";
-                    $db->query($sqlcircleSelect);
+                    // Log $circleSelect
+                    logcircleSelect($userResponse, $phoneNumber, $sessionId);
 
                     // GET CIRCLE BALANCE
-                    $sqlCircleBalance = "SELECT balance FROM circles WHERE circleID LIKE '%" . $circleSelect . "%'";
-                    $resultCircleBalance = mysqli_query($db, $sqlCircleBalance);
-                    $circleBalanceAvailable = mysqli_fetch_assoc($resultCircleBalance);
-                    $circleBalance = $circleBalanceAvailable['balance'];
+                    circleBalance($circleSelect);
 
-                    // CHECK IF PROPOSAL AVAILABLE
-                    $sqlProposal = "SELECT * FROM circleProposals WHERE circleID LIKE '%" . $circleSelect . "%' && result is NULL";
-                    $proposalQuery = $db->query($sqlProposal);
-                    $proposalAvailable = $proposalQuery->fetch_assoc();
+                    // Get active proposal  |  $proposalAvailable  |  $voteCheckAvailable  |  $proposalAvailable['txnhash']['phonenumber'] ['action'] ['value']
+                    proposalAvailable($circleSelect, $phoneNumber);
+
                     if ($proposalAvailable != NULL)
                     {
 
-                        // WHILE LOOP SO WE CAN DO MULTIPLE VOTES AT A TIME :)))))))
-                        // Pull proposer #, action, and value from db query
-                        $txnhash = $proposalAvailable['txnhash'];
-                        $proposer = $proposalAvailable['phonenumber'];
-                        $action = $proposalAvailable['action'];
-                        $value = $proposalAvailable['value'];
-
-                        // CHECK IF USER HAS ALREADY VOTED
-                        $sqlVoteCheck = "SELECT * FROM votes WHERE phonenumber LIKE '%" . $phoneNumber . "%' && txnhash LIKE '%" . $txnhash . "%'";
-                        $voteCheckQuery  = $db->query($sqlVoteCheck);
-                        $voteCheckAvailable = $voteCheckQuery->fetch_assoc();
-
                         // If response is 1/5 and user has not voted
-                        if ($userResponse >= 1 && $userResponse <= 5 && $voteCheckAvailable == NULL)
+                        if ($voteCheckAvailable == NULL)
                         {
                             //$response = "CON Welome to " . $circle1 . ". Please choose an action. \n"
                             $response = "CON Welcome to " . ucfirst($circleSelect) . ". \n Circle Balance: " . $circleBalance . " ZMW \n Please choose an action:
@@ -574,13 +349,10 @@ if (!empty($_POST))
                         // end of votecheck
 
                     } //end of proposal available
-                    else
-                    { //if ($proposalAvailable = NULL)
-                        if ($userResponse >= 1 && $userResponse <= 5)
-                        {
 
-                            //$response = "CON Welome to " . $circle1 . ". Please choose an action. \n"
-                            $response = "CON Welcome to " . ucfirst($circleSelect) . ". \n Circle Balance: " . $circleBalance . " ZMW \n Please choose an action:
+                    else
+                    {
+                        $response = "CON Welcome to " . ucfirst($circleSelect) . ". \n Circle Balance: " . $circleBalance . " ZMW \n Please choose an action:
                          1. View Balances
                          2. Pay-in Funds
                          3. Request Funds
@@ -588,7 +360,15 @@ if (!empty($_POST))
                         }
                     }
 
-                } //end of if ($lv0v == 1){
+                //} //end of if ($lv0v == 1){
+
+
+
+
+                ///////////////     ///////////////   ///////////////   ///////////////   ///////////////
+  ///////////////       ///////////////         ///////////////       ///////////////       ///////////////       ///////////////
+          ///////////////         ///////////////           ///////////////             ///////////////         ///////////////
+
 
                 // INVITE CODE CHECK
                 elseif ($reverse[1] == 2)
@@ -647,42 +427,29 @@ if (!empty($_POST))
                     }
                 }
 
+
+                ///////////////     ///////////////   ///////////////   ///////////////   ///////////////
+  ///////////////       ///////////////         ///////////////       ///////////////       ///////////////       ///////////////
+          ///////////////         ///////////////           ///////////////             ///////////////         ///////////////
+
+
+
+
                 // WEATHER STATION HERE
 
                 // MAIZE PRICES
                 elseif ($reverse[1] == 4 && ( $userResponse == 1 || $userResponse == 2 )) // || $reverse[2] == 4
                 {
-                  // Query maize prices
-                  $sqlMaize = "SELECT * FROM maizePrices";
-                  $maizeQuery = $db->query($sqlMaize);
-
-                  $response = "END Prices for September 2020 (ZMW/kg): \n ";
-
-                  //Loop through cities
-                  while ($maizeAvailable = mysqli_fetch_assoc($maizeQuery))
-                  {
-                      $city = $maizeAvailable['city'];
-
-                      // MAIZE WHITE
-                      if ($userResponse == 1) {
-                        $price = $maizeAvailable['mPrice'];
-                      }
-
-                      // ROLLER MAIZE MEAL
-                      elseif ($userResponse == 2) {
-                        $price = $maizeAvailable['rmmPrice'];
-                      }
-
-                      $response .= "" . $city . ": " . $price . " \n ";
-                  }
+                  // Get maize prices  |  $maizePrices
+                  maizePrices();
+                  $response = $maizePrices;
                 }
 
                 // LIVESTOCK SERVICE SELECT
                 elseif ($reverse[1] == 5 || ($reverse[3] == 5 && $reverse[1] == 'b'))
                 {
                   // Update to level 6 (cattle level)
-                  $sqlLvl6 = "UPDATE `session_levels` SET `level`=6 where `session_id`='" . $sessionId . "'";
-                  $db->query($sqlLvl6);
+                  updateLevel(6, $sessionId);
 
                   // Common Diseases
                   if ($userResponse == 1) {
@@ -741,8 +508,7 @@ if (!empty($_POST))
                       5. Tell us your animal experience
                       6. What would you like to learn? ";
                     // Demote User to level 2
-                    $sqlDemote2 = "UPDATE `session_levels` SET `level`=2 where `session_id`='" . $sessionId . "'";
-                    $db->query($sqlDemote2);
+                    updateLevel(2, $sessionId);
                   }
                 }
 
@@ -756,16 +522,10 @@ if (!empty($_POST))
                   5. Livestock Services ";
 
                   // Demote user to level 1
-                  $sqlLevel1 = "UPDATE `session_levels` SET `level`=1 where `session_id`='" . $sessionId . "'";
-                  $db->query($sqlLevel1);
+                  updateLevel(1, $sessionId);
                 }
 
-                $sql = "select level from session_levels where session_id ='" . $sessionId . " '";
-                $levelQuery = $db->query($sql);
-                if ($result = $levelQuery->fetch_assoc())
-                {
-                    $level = $result['level'];
-                }
+                userLevel($sessionId);
 
                 header('Content-type: text/plain');
                 echo $response;
@@ -780,14 +540,10 @@ if (!empty($_POST))
             case "3":
 
                 // Graduate user to level 4
-                $sqlLevel4 = "UPDATE `session_levels` SET `level`=4 where `session_id`='" . $sessionId . "'";
-                $db->query($sqlLevel4);
+                updateLevel(4, $sessionId);
 
                 // ReFetch circleSelect data
-                $sqlselect = "SELECT * FROM session_levels WHERE session_id LIKE '%" . $sessionId . "%'";
-                $selectQuery = $db->query($sqlselect);
-                $selectAvailable = $selectQuery->fetch_assoc();
-                $circleSelect = $selectAvailable['circleSelect'];
+                circleSelect($sessionId);
 
                 // POLLEN PAY
                 if ($textArray[0] == 0 || $reverse[2] == 0)
@@ -810,40 +566,24 @@ if (!empty($_POST))
                     $response = "CON Please enter your pin to withdraw " .$userResponse. " ZWA: ";
                   }
 
+                  else {
+                    $response = "CON Error";
+                  }
+
                   // ERROR else
                 }
 
 
                 // SAVINGS CIRCLES
-                if ($textArray[0] == 1 || $reverse[2] == 1)
+                elseif ($textArray[0] == 1 || $reverse[2] == 1)
                 {
                   // VIEW BALANCES
                   if ($userResponse == 1)
                   {
-                      // Fetch members of the circle
-                      $sqlcircleMembers = "SELECT phonenumber FROM circleMembers WHERE circleID LIKE '%" . $circleSelect . "%' ";
-                      $resultCircleMembers = mysqli_query($db, $sqlcircleMembers);
-                      $circleMembers = "";
-
-                      $response = "END Here is the member balances for " . ucfirst($circleSelect) . " (ZMW): \n";
-
-                      //Loop through circleMembers
-                      while ($circleMembers = mysqli_fetch_assoc($resultCircleMembers))
-                      { //&& $circleMemberBalance = mysqli_fetch_assoc($resultCircleMemberBalance)
-                          $circleMembers = $circleMembers['phonenumber'];
-                          $sqlcircleMemberBalance = "SELECT userBalance FROM circleMembers WHERE circleID LIKE '%" . $circleSelect . "%' && phonenumber LIKE '%" . $circleMembers . "%'";
-                          $resultCircleMemberBalance = mysqli_query($db, $sqlcircleMemberBalance);
-                          $circleMemberBalance = mysqli_fetch_assoc($resultCircleMemberBalance);
-                          $circleMemberBalance = $circleMemberBalance['userBalance'];
-
-                          $sqlmembersName = "SELECT username FROM users WHERE phonenumber LIKE '%" . $circleMembers . "%' ";
-                          $resultMembersName = mysqli_query($db, $sqlmembersName);
-                          $membersNameAvailable = mysqli_fetch_assoc($resultMembersName);
-                          $membersName = ucfirst($membersNameAvailable['username']);
-
-                          $response .= "" . $r . ". " . $membersName . ": " . $circleMemberBalance . " \n";
-                          $r++;
-                      }
+                      // Get circle member balances  |  $circleMemberBalances
+                      circleMemberBalances($circleSelect);
+                      $response = "CON " . ucfirst($circleSelect) . " balances \n";
+                      $response .= $circleMemberBalances;
                   }
 
                   // PAY-IN FUNDS
@@ -857,9 +597,7 @@ if (!empty($_POST))
                   elseif ($userResponse == 3)
                   {
                     // CHECK IF PROPOSAL AVAILABLE
-                    $sqlProposal = "SELECT * FROM circleProposals WHERE circleID LIKE '%" . $circleSelect . "%' && result is NULL";
-                    $proposalQuery = $db->query($sqlProposal);
-                    $proposalAvailable = $proposalQuery->fetch_assoc();
+                    proposalAvailable($circleSelect, $phoneNumber);
 
                     if ($proposalAvailable != NULL)
                     {
@@ -894,13 +632,8 @@ if (!empty($_POST))
                   elseif ($userResponse == 0)
                   {
 
-                      // GET PROPOSAL INFO
-                      $sqlProposal = "SELECT * FROM circleProposals WHERE circleID LIKE '%" . $circleSelect . "%' && result is NULL";
-                      $proposalQuery = $db->query($sqlProposal);
-                      $proposalAvailable = $proposalQuery->fetch_assoc();
-                      //$txnhash = $proposalAvailable['txnhash'];
-
-
+                      // Get active proposal  |  $proposalAvailable  |  $voteCheckAvailable  |  $proposalAvailable['txnhash']['phonenumber'] ['action'] ['value']
+                      proposalAvailable($circleSelect, $phoneNumber);
 
                       // CHECK IF USER HAS ALREADY VOTED
                       //$sqlVoteCheck = "SELECT * FROM votes WHERE circleID LIKE '%" . $circleSelect . "%' && phonenumber LIKE '%" . $phoneNumber . "%' && txnhash LIKE '%" . $txnhash . "%'";
@@ -909,30 +642,11 @@ if (!empty($_POST))
 
                       if ($proposalAvailable != NULL ) {  //&& $voteCheckAvailable != NULL
 
-                          // WHILE LOOP SO WE CAN DO MULTI
-                          // SAVE PROPOSAL INDEX SO WE KNOW WHICH ONE THEY SELECTED??????
-                          // GET PROPOSAL Data
-                          $txnhash = $proposalAvailable['txnhash'];
-                          $proposer = $proposalAvailable['phonenumber'];
-                          $action = $proposalAvailable['action'];
-                          $value = $proposalAvailable['value'];
-
                           // Fetch proposer's name
                           $sqlProposerName = "SELECT username FROM users WHERE phonenumber LIKE '%" . $proposer . "%' ";
                           $resultProposerName = mysqli_query($db, $sqlProposerName);
                           $proposerNameAvailable = mysqli_fetch_assoc($resultProposerName);
                           $proposerName = ucfirst($proposerNameAvailable['username']);
-
-                          // CHECK IF PROPOSAL AVAILABLE
-                          $sqlProposal = "SELECT * FROM circleProposals WHERE circleID LIKE '%" . $circleSelect . "%' && result is NULL";
-                          $proposalQuery = $db->query($sqlProposal);
-                          $proposalAvailable = $proposalQuery->fetch_assoc();
-                          $txnhash = $proposalAvailable['txnhash'];
-
-                          // CHECK IF USER HAS ALREADY VOTED
-                          $sqlVoteCheck = "SELECT * FROM votes WHERE phonenumber LIKE '%" . $phoneNumber . "%' && txnhash LIKE '%" . $txnhash . "%'";
-                          $voteCheckQuery  = $db->query($sqlVoteCheck);
-                          $voteCheckAvailable = $voteCheckQuery->fetch_assoc();
 
                           // User has voted
                           if ($voteCheckAvailable != NULL)
@@ -991,13 +705,21 @@ if (!empty($_POST))
                   //echo $response;
                 } //end of SAVINGS CIRCLES
 
-                // Update PHP level variable
-                $sql = "select level from session_levels where session_id ='" . $sessionId . " '";
-                $levelQuery = $db->query($sql);
-                if ($result = $levelQuery->fetch_assoc())
+                else
                 {
-                    $level = $result['level'];
+                  $response = "CON Please select a service:
+                  1. My Circles
+                  2. Join a Circle
+                  3. Weather Station
+                  4. Maize Prices
+                  5. Livestock Services ";
+
+                  //Demote user to level 1
+                  updateLevel(1, $sessionId);
                 }
+
+                // Update PHP level variable
+                userLevel($sessionId);
                 header('Content-type: text/plain');
                 echo $response;
 
@@ -1017,12 +739,9 @@ if (!empty($_POST))
                 4. Access Extension Services
                 5. Tell us your animal experience
                 6. What would you like to learn? ";
+
               // Demote User to level 2
-              $sqlDemote2 = "UPDATE `session_levels` SET `level`=2 where `session_id`='" . $sessionId . "'";
-              $db->query($sqlDemote2);
-                // Demote user to level 2
-                $sqlDemote = "UPDATE session_levels SET level = 2 WHERE session_id = '" . $sessionId . "' ";
-                $demoteQuery = $db->query($sqlDemote);
+              updateLevel(2, $sessionId);
               }
 
               else {
@@ -1034,17 +753,10 @@ if (!empty($_POST))
                 5. Livestock Services";
 
                 // Demote user to level 1
-                $sqlLevel1 = "UPDATE `session_levels` SET `level`=1 where `session_id`='" . $sessionId . "'";
-                $db->query($sqlLevel1);
+                updateLevel(1, $sessionId);
               }
 
-              // Update PHP level variable
-              $sql = "SELECT level from session_levels where session_id ='" . $sessionId . " '";
-              $levelQuery = $db->query($sql);
-              if ($result = $levelQuery->fetch_assoc())
-              {
-                  $level = $result['level'];
-              }
+              userLevel($sessionId);
               header('Content-type: text/plain');
               echo $response;
 
@@ -1056,14 +768,10 @@ if (!empty($_POST))
             case "4":
 
                 // ReFetch circleSelect data
-                $sqlselect = "SELECT * FROM session_levels WHERE session_id LIKE '%" . $sessionId . "%'";
-                $selectQuery = $db->query($sqlselect);
-                $selectAvailable = $selectQuery->fetch_assoc();
-                $circleSelect = $selectAvailable['circleSelect'];
+                circleSelect($sessionId);
 
                 // UPGRADE TO LEVEL 5
-                $sqlLevel5 = "UPDATE `session_levels` SET `level`=5 where `session_id`='" . $sessionId . "'";
-                $resultLevel5 = mysqli_query($db, $sqlLevel5);
+                updateLevel(5, $sessionId);
 
                 // GO BACK
                 //if (strtolower($userResponse) == 'b') {
@@ -1082,7 +790,7 @@ if (!empty($_POST))
                   // SEND (pin)
                   if ($reverse[2] == 1)
                   {
-                    $response = "CON Please enter your pin to send " .$userResponse. " ZWA to ".$textArray[1]. ": ";
+                    $response = "CON Please enter your pin to send " .$userResponse. " ZWA to ".$reverse[1]. ": ";
                   }
 
                   // DEPOSIT (API call and receipt)
@@ -1141,28 +849,7 @@ if (!empty($_POST))
                   elseif ($reverse[1] == 2)
                   {
 
-                      // Fetch current txn txnhash
-                      $sqlTxnCount = "SELECT txnhash FROM circleTxns";
-                      $txnCountQuery = $db->query($sqlTxnCount);
-                      $txnCount = mysqli_num_rows($txnCountQuery);
-                      $newTxnCount = $txnCount++;
-
-                      // Log transaction in DB
-                      $sqlTxn = "INSERT INTO `circleTxns`(`dw`,`txnhash`,`phoneNumber`,`circleID`,`amount`) VALUES('D','" . $newTxnCount . "','" . $phoneNumber . "','" . $circleSelect . "','" . $userResponse . "')";
-                      $resultTxn = mysqli_query($db, $sqlTxn);
-
-                      // Update circle balance
-                      $sqlBalanceUpdate = "UPDATE `circles` SET `balance`= `balance` + '" . $userResponse . "' where `circleID`='" . $circleSelect . "'";
-                      $resultBalanceUpdate = mysqli_query($db, $sqlBalanceUpdate);
-
-                      // Update user-circle balance
-                      $sqlUserBalanceUpdate = "UPDATE `circleMembers` SET `userBalance`= `userBalance` + '" . $userResponse . "' where `circleID`='" . $circleSelect . "' && `phonenumber` LIKE '%" . $phoneNumber . "%'";
-                      $resultUserBalanceUpdate = mysqli_query($db, $sqlUserBalanceUpdate);
-
-                      $sqlCircleBalance = "SELECT balance FROM circles WHERE circleID LIKE '%" . $circleSelect . "%'";
-                      $resultCircleBalance = mysqli_query($db, $sqlCircleBalance);
-                      $circleBalanceAvailable = mysqli_fetch_assoc($resultCircleBalance);
-                      $circleBalance = $circleBalanceAvailable['balance'];
+                      circleDeposit($userResponse, $phoneNumber, $circleSelect);
 
                       $response = "END Congrats! You have deposited " . $userResponse . " into " . ucfirst($circleSelect) . "\n";
                       $response .= "Circle Balance: " . $circleBalance . " ZMW \n";
@@ -1310,7 +997,8 @@ if (!empty($_POST))
                                       }
 
                                       $recipient = $circleMembers;
-                                      $gateway = new AfricasTalkingGateway($username, $apikey, "sandbox");
+                                      $gateway = new AfricasTalkingGateway("sandbox", $apikey, "sandbox");
+                                      //$gateway = new AfricasTalkingGateway($username, $apikey, "sandbox");
                                       $gateway->sendMessage($recipient, $message);
                                   }
 
@@ -1386,7 +1074,8 @@ if (!empty($_POST))
                                           $message = "" . $proposerName . "'s request to add " . $value . " to " . ucfirst($circleSelect) . " was " . $result . "";
                                       }
                                       $recipient = $circleMembers;
-                                      $gateway = new AfricasTalkingGateway($username, $apikey, "sandbox");
+                                      $gateway = new AfricasTalkingGateway("sandbox", $apikey, "sandbox");
+                                      //$gateway = new AfricasTalkingGateway($username, $apikey, "sandbox");
                                       $gateway->sendMessage($recipient, $message);
                                   }
 
@@ -1461,7 +1150,7 @@ if (!empty($_POST))
                     CURLOPT_POST => TRUE,
                     CURLOPT_RETURNTRANSFER => TRUE,
                     CURLOPT_HTTPHEADER => array(
-                        'Authorization: bearer '.$authToken,
+                        //'Authorization: bearer '.$authToken,
                         'Content-Type: application/json'
                     ),
                     CURLOPT_POSTFIELDS => json_encode($postData)
@@ -1505,6 +1194,7 @@ if (!empty($_POST))
                     $response = "END Oops, you don't have enough funds to fufill this request. ";
                     $response .= "Error: " . $responseData['status'] . "";
                   }
+
 
                 // ERROR
 
@@ -1563,11 +1253,13 @@ if (!empty($_POST))
                   // SEND SMS VIA AT GATEWAY
                   $message = "Proposal: Withdraw Funds \n Circle: " . $circleSelect . "\n  Requestor: " . $requesterName . ", " . $phoneNumber . " \n Amount: " . $reverse[1] . " ZMW \n Reason: " . $userResponse . "\n Dial into USSD to vote *384*313233#";
                   $recipient = $circleMembers;
-                  $gateway = new AfricasTalkingGateway($username, $apikey, "sandbox");
+                  $gateway = new AfricasTalkingGateway("sandbox", $apikey, "sandbox");
+                  //$gateway = new AfricasTalkingGateway($username, $apikey, "sandbox");
                   $gateway->sendMessage($recipient, $message);
               }
               $response = "END Your request for " . $reverse[1] . " ZMW from " . ucfirst($circleSelect) . " has been submitted for vote. \n";
               $response .= "Proposal ID: " . $newProposalCount . "\n";
+              $response .= "" . $username . "";
               //$response .= "" . $proposalCount . "";
 
             }
